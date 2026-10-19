@@ -1,0 +1,33 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -96.7995196637868,
+     32.78007213578156
+    ]
+   },
+   "properties": {
+    "NAME": "Demo Elementary School",
+    "FACILITY_TYPE": "school"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -96.79252758176834,
+     32.7863117354564
+    ]
+   },
+   "properties": {
+    "NAME": "Demo Hospital",
+    "FACILITY_TYPE": "hospital"
+   }
+  }
+ ]
+}

@@ -1,0 +1,80 @@
+# Tunable parameters for the plume screening model and hazard grading.
+# !! The plume coefficients are PLACEHOLDER engineering heuristics, NOT validated physics.
+# !! Have your gas engineering / safety group review and calibrate them before operational use.
+# See docs/hazard-grading.md and docs/limitations.md.
+
+validation:
+  lel_pct_min: 0.0
+  lel_pct_max: 100.0
+  ppm_min: 0.0
+  ppm_max: 1000000.0
+  temperature_c_min: -40.0       # ambient sensor limits
+  temperature_c_max: 60.0
+  # Methane: 100 % LEL = 5.0 % volume = 50,000 ppm. Used only to warn on inconsistent readings.
+  ppm_per_lel_pct: 500.0
+  lel_ppm_mismatch_ratio: 3.0    # warn if the two readings differ by more than this factor
+
+dedupe:
+  radius_ft: 50
+  window_hours: 12
+  # A duplicate reading is treated as an ESCALATION (full re-analysis, Report 2, e-mail) if its grade is worse
+  # OR its effective %LEL is at least this many points above the highest reading so far (while Grade 1-2).
+  escalation_lel_delta_pct: 10
+
+plume:
+  base_radius_m: 8.0             # isotropic radius for a low-pressure, soil, ~0 %LEL leak
+  max_radius_m: 150.0
+  max_length_m: 300.0
+  lel_gain: 1.0                  # radius multiplier = 1 + lel_gain * (LEL_pct / 100)
+  pressure_class_multiplier:     # keys are normalized pressure classes
+    low_distribution: 1.0
+    medium_distribution: 1.5
+    high_transmission: 2.5
+    unknown: 1.5                 # conservative when unknown
+  material_multiplier:
+    cast_iron: 1.2               # joint leaks tend to migrate
+    bare_steel: 1.1
+    polyethylene: 1.0
+    unknown: 1.2
+  surface_cover_multiplier:      # sealed surfaces force lateral migration
+    asphalt: 1.5
+    concrete: 1.5
+    soil: 1.0
+    grass: 0.9
+    unknown: 1.3
+  calm_wind_mps: 1.0             # below this, plume is a circle
+  wind_stretch_per_mps: 0.25     # downwind length = R * (1 + stretch * min(wind, wind_cap))
+  wind_cap_mps: 8.0
+  upwind_fraction: 0.5
+  crosswind_narrowing: 0.35      # fraction the crosswind half-width narrows at wind_cap
+  min_crosswind_factor: 0.6
+  missing_weather_radius_factor: 1.5   # conservative circle when no weather is available
+
+grading:
+  critical_lel_pct: 20.0         # Grade 1 requires LEL above this AND an overlap
+  measurable_lel_pct: 1.0        # below this the reading is not considered gas migration
+  monitored_max_lel_pct: 10.0    # Grade 3 needs LEL below this AND nothing at risk inside the plume
+  # Electric categories (see layer_schema.yaml) whose overlap makes a leak Grade 1
+  grade1_electric_categories: [ignition_source, conduit]
+  critical_facility_makes_grade1: true
+  # What to do with an electric asset type that is NOT listed in layer_schema.yaml categories.
+  # `other` = not escalating (but the incident is FLAGGED); `ignition_source` = conservative.
+  unmapped_electric_category: other
+  # A measurable reading with a critical facility, customer meter (proxy for a structure) or any
+  # electric asset inside the plume is at least Grade 2
+  structure_in_plume_escalates: true
+  excavation_ticket_escalates: false
+
+valves:
+  count: 3
+  search_radius_m: 1500
+  far_valve_flag_m: 500          # flag the incident if even the nearest valve is farther than this
+
+joint_hazard:
+  close_distance_ft: 20          # daily summary: "within N feet of energized pad-mount"
+
+dispatch:
+  grade_1: DISPATCH_JOINT_GAS_ELECTRIC_CREW
+  grade_2_with_electric: DISPATCH_JOINT_GAS_ELECTRIC_CREW
+  grade_2: DISPATCH_GAS_CREW
+  grade_3: DISPATCH_GAS_MONITOR

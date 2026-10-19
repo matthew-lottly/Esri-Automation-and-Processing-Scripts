@@ -1,0 +1,124 @@
+# Maps this tool's internal names to YOUR layers' field names and domain values.
+# Edit the right-hand side (`name:` / values) to match your enterprise schema. Do not rename the keys.
+# `scripts/create_incident_service.py` builds the output service from the `incident_layer`
+# and `plume_layer` sections below, so what you publish and what the pipeline writes always agree.
+
+# ---- Survey123 / Field Maps source layer (read) -------------------------------------
+survey_layer:
+  leak_id: Leak_ID
+  lel_pct: Gas_LEL_Pct               # % LEL reading
+  ppm: Gas_PPM                       # parts-per-million reading
+  pipeline_type: Pipeline_Type       # coded values below
+  pressure_class: Pressure_Class     # coded values below
+  surface_cover: Surface_Cover       # coded values below
+  crew_badge: Crew_Badge
+  temp_c: Instrument_Temp_C          # optional: instrument/ambient temperature (deg C)
+  notes: Notes
+  created_field: CreationDate        # editor-tracking creation time (epoch ms, UTC)
+  creator_field: Creator
+  # Coded values -> normalized categories. Keys are what Survey123 stores (choice `name`).
+  pipeline_type_values:
+    cast_iron: cast_iron
+    bare_steel: bare_steel
+    polyethylene: polyethylene
+  pressure_class_values:
+    high_transmission: high_transmission
+    medium_distribution: medium_distribution
+    low_distribution: low_distribution
+  surface_cover_values:
+    asphalt: asphalt
+    concrete: concrete
+    soil: soil
+    grass: grass
+
+# ---- Enterprise reference layers (read) ---------------------------------------------
+electric_assets:
+  asset_id_field: ASSETID
+  asset_type_field: ASSETTYPE        # text OR integer coded value; list values in either form
+  energized_field: ENERGIZED         # optional; leave blank if you do not have one
+  energized_values: [1, "Y", "Yes", "Energized"]
+  categories:
+    ignition_source:                 # pad-mounted transformers, open/pad-mount switchgear, etc.
+      [PadmountTransformer, PadmountSwitchgear, Switchgear, Transformer, Substation]
+    conduit:                         # underground conduit / duct bank / cable
+      [UndergroundConduit, DuctBank, UndergroundCable]
+    other:                           # reported but not escalating (e.g. overhead conductors)
+      [OverheadConductor]
+
+gas_valves:
+  valve_id_field: VALVEID
+  pressure_system_field: PRESSURE_SYSTEM   # optional; if present and matching, preferred
+  status_field:                            # optional; skip valves whose status is not in `usable_values`
+  usable_values: []
+
+critical_facilities:
+  name_field: NAME
+  type_field: FACILITY_TYPE          # hospital / school / nursing_home / ...
+
+customer_meters:
+  meter_id_field: METERID
+
+franchise_layer:
+  id_field: OBJECTID
+
+excavation_layer:                    # only used when EXCAVATION_PROVIDER=layer
+  ticket_number_field: TICKET_NUM
+  status_field: STATUS
+  work_type_field: WORK_TYPE
+  expires_field: EXPIRES
+
+# ---- Output: incident point layer (write) -------------------------------------------
+# type: string | int | double | datetime ; length applies to strings
+incident_layer:
+  fields:
+    leak_id:            {name: LEAK_ID, type: string, length: 64}
+    source_global_id:   {name: SRC_GLOBALID, type: string, length: 64}
+    source_object_id:   {name: SRC_OBJECTID, type: int}
+    reported_at:        {name: REPORTED_AT, type: datetime}
+    processed_at:       {name: PROCESSED_AT, type: datetime}
+    crew_badge:         {name: CREW_BADGE, type: string, length: 32}
+    lel_pct:            {name: LEL_PCT, type: double}
+    ppm:                {name: PPM, type: double}
+    pipeline_type:      {name: PIPE_TYPE, type: string, length: 32}
+    pressure_class:     {name: PRESS_CLASS, type: string, length: 32}
+    surface_cover:      {name: SURF_COVER, type: string, length: 32}
+    wind_speed_mps:     {name: WIND_MPS, type: double}
+    wind_from_deg:      {name: WIND_FROM_DEG, type: double}
+    air_temp_c:         {name: AIR_TEMP_C, type: double}
+    pressure_hpa:       {name: BARO_HPA, type: double}
+    weather_status:     {name: WEATHER_STATUS, type: string, length: 32}
+    plume_length_m:     {name: PLUME_LEN_M, type: double}
+    grade:              {name: HSI_GRADE, type: int}          # 1 / 2 / 3
+    grade_label:        {name: HSI_LABEL, type: string, length: 16}
+    status_code:        {name: STATUS_CODE, type: int}        # 1 Active_Triage, 9 Rejected
+    status_text:        {name: STATUS, type: string, length: 32}
+    dispatch_code:      {name: DISPATCH_CODE, type: string, length: 64}
+    valve_ids:          {name: VALVE_IDS, type: string, length: 128}
+    elec_ignition_count: {name: ELEC_IGN_CNT, type: int}
+    elec_conduit_count: {name: ELEC_CND_CNT, type: int}
+    elec_min_dist_m:    {name: ELEC_MIN_M, type: double}
+    critical_fac_count: {name: CRIT_FAC_CNT, type: int}
+    critical_fac_names: {name: CRIT_FAC_NAMES, type: string, length: 255}
+    meters_affected:    {name: METERS_CNT, type: int}
+    excavation_tickets: {name: EXCAV_TICKETS, type: int}
+    is_duplicate:       {name: IS_DUPLICATE, type: int}
+    duplicate_of:       {name: DUP_OF, type: string, length: 64}
+    reading_count:      {name: READING_CNT, type: int}
+    max_lel_pct:        {name: MAX_LEL_PCT, type: double}
+    quality_flags:      {name: QUALITY_FLAGS, type: string, length: 255}
+    report_a_status:    {name: REPORT_A_STATUS, type: string, length: 16}   # OK | FAILED | PENDING
+    report_a_path:      {name: REPORT_A_PATH, type: string, length: 255}
+    report_b_status:    {name: REPORT_B_STATUS, type: string, length: 16}   # OK | FAILED | NOT_REQUIRED
+    report_b_path:      {name: REPORT_B_PATH, type: string, length: 255}
+    notify_status:      {name: NOTIFY_STATUS, type: string, length: 16}     # SENT | FAILED | NOT_REQUIRED
+  status_codes: {Active_Triage: 1, Rejected: 9}
+
+# ---- Output: plume polygon layer (write) --------------------------------------------
+plume_layer:
+  fields:
+    leak_id:       {name: LEAK_ID, type: string, length: 64}
+    grade:         {name: HSI_GRADE, type: int}
+    length_m:      {name: PLUME_LEN_M, type: double}
+    max_width_m:   {name: PLUME_WID_M, type: double}
+    model:         {name: PLUME_MODEL, type: string, length: 64}
+    created_at:    {name: CREATED_AT, type: datetime}

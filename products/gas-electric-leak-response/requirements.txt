@@ -1,0 +1,13 @@
+# Runtime dependencies. Python 3.10+ (3.11/3.12 recommended).
+# `arcgis` needs an Esri account to be useful (see ../../docs/esri-account-requirements.md).
+arcgis>=2.3
+fastapi>=0.110
+uvicorn>=0.29
+python-dotenv>=1.0
+pyyaml>=6.0
+requests>=2.31
+shapely>=2.0
+pyproj>=3.6
+matplotlib>=3.8
+reportlab>=4.0
+openpyxl>=3.1

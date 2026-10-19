@@ -1,0 +1,7 @@
+{
+ "wind_speed_mps": 4.0,
+ "wind_from_deg": 270.0,
+ "air_temp_c": 18.0,
+ "pressure_hpa": 1013.0,
+ "station": "SAMPLE"
+}

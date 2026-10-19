@@ -1,0 +1,38 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       -96.74,
+       32.730000000000004
+      ],
+      [
+       -96.74,
+       32.83
+      ],
+      [
+       -96.86,
+       32.83
+      ],
+      [
+       -96.86,
+       32.730000000000004
+      ],
+      [
+       -96.74,
+       32.730000000000004
+      ]
+     ]
+    ]
+   },
+   "properties": {
+    "NAME": "Demo franchise"
+   }
+  }
+ ]
+}

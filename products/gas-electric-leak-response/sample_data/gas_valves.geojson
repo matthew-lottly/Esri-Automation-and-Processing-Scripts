@@ -1,0 +1,75 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -96.80128089941087,
+     32.78027050608133
+    ]
+   },
+   "properties": {
+    "VALVEID": "GV-101",
+    "PRESSURE_SYSTEM": "LP"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -96.79839888704119,
+     32.77963930624351
+    ]
+   },
+   "properties": {
+    "VALVEID": "GV-102",
+    "PRESSURE_SYSTEM": "LP"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -96.7993595393123,
+     32.78180341567391
+    ]
+   },
+   "properties": {
+    "VALVEID": "GV-103",
+    "PRESSURE_SYSTEM": "LP"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -96.8032021419438,
+     32.777294832132895
+    ]
+   },
+   "properties": {
+    "VALVEID": "GV-104",
+    "PRESSURE_SYSTEM": "LP"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -96.79466266608965,
+     32.78450842860406
+    ]
+   },
+   "properties": {
+    "VALVEID": "GV-105",
+    "PRESSURE_SYSTEM": "LP"
+   }
+  }
+ ]
+}

@@ -1,0 +1,82 @@
+[
+ {
+  "name": "A",
+  "minutes_ago": 180,
+  "xy": [
+   -96.8,
+   32.78
+  ],
+  "attributes": {
+   "Leak_ID": "LK-DEMO-A",
+   "Gas_LEL_Pct": 35,
+   "Gas_PPM": 17500,
+   "Crew_Badge": "T-4471",
+   "Notes": "Strong odor at curb line next to pad-mount; reading taken at bar hole.",
+   "Instrument_Temp_C": 21,
+   "Pipeline_Type": "cast_iron",
+   "Pressure_Class": "medium_distribution",
+   "Surface_Cover": "asphalt"
+  },
+  "photos": [
+   "leak_a_1.png",
+   "leak_a_2.png"
+  ]
+ },
+ {
+  "name": "B-duplicate",
+  "minutes_ago": 30,
+  "xy": [
+   -96.80010674135917,
+   32.78005410248143
+  ],
+  "attributes": {
+   "Leak_ID": "LK-DEMO-B",
+   "Gas_LEL_Pct": 12,
+   "Gas_PPM": 6000,
+   "Crew_Badge": "T-5120",
+   "Notes": "Second crew re-checked the same area.",
+   "Pipeline_Type": "cast_iron",
+   "Pressure_Class": "medium_distribution",
+   "Surface_Cover": "asphalt"
+  },
+  "photos": []
+ },
+ {
+  "name": "C-grade3",
+  "minutes_ago": 20,
+  "xy": [
+   -96.76796953408663,
+   32.80253858437835
+  ],
+  "attributes": {
+   "Leak_ID": "LK-DEMO-C",
+   "Gas_LEL_Pct": 0.4,
+   "Gas_PPM": 200,
+   "Crew_Badge": "T-3301",
+   "Notes": "Trace reading in open field.",
+   "Pipeline_Type": "polyethylene",
+   "Pressure_Class": "low_distribution",
+   "Surface_Cover": "grass"
+  },
+  "photos": []
+ },
+ {
+  "name": "D-outside",
+  "minutes_ago": 10,
+  "xy": [
+   -96.3,
+   32.78
+  ],
+  "attributes": {
+   "Leak_ID": "LK-DEMO-D",
+   "Gas_LEL_Pct": 5,
+   "Gas_PPM": 2500,
+   "Crew_Badge": "T-0001",
+   "Notes": "Coordinates outside franchise (demonstrates validation).",
+   "Pipeline_Type": "cast_iron",
+   "Pressure_Class": "medium_distribution",
+   "Surface_Cover": "asphalt"
+  },
+  "photos": []
+ }
+]

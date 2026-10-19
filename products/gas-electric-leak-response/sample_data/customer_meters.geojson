@@ -1,0 +1,83 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -96.79989325857622,
+     32.780108205007856
+    ]
+   },
+   "properties": {
+    "METERID": "M-1"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -96.79978651710938,
+     32.7801262390468
+    ]
+   },
+   "properties": {
+    "METERID": "M-2"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -96.79962640509213,
+     32.78009017032083
+    ]
+   },
+   "properties": {
+    "METERID": "M-3"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -96.79953033735637,
+     32.7801803408741
+    ]
+   },
+   "properties": {
+    "METERID": "M-4"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -96.79679766426014,
+     32.78270508484159
+    ]
+   },
+   "properties": {
+    "METERID": "M-5"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -96.80064045164346,
+     32.780541023610795
+    ]
+   },
+   "properties": {
+    "METERID": "M-6"
+   }
+  }
+ ]
+}

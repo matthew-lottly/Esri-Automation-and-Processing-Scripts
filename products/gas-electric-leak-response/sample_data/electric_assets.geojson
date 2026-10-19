@@ -1,0 +1,92 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -96.79995730347356,
+     32.780018034168414
+    ]
+   },
+   "properties": {
+    "ASSETID": "PM-1001",
+    "ASSETTYPE": "PadmountTransformer",
+    "ENERGIZED": "Y"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -96.79970112392297,
+     32.780135255959834
+    ]
+   },
+   "properties": {
+    "ASSETID": "SW-2002",
+    "ASSETTYPE": "PadmountSwitchgear",
+    "ENERGIZED": "Y"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -96.80005337062575,
+      32.77996393163711
+     ],
+     [
+      -96.79957303499393,
+      32.77996393092087
+     ]
+    ]
+   },
+   "properties": {
+    "ASSETID": "UG-3003",
+    "ASSETTYPE": "UndergroundConduit",
+    "ENERGIZED": "Y"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "LineString",
+    "coordinates": [
+     [
+      -96.80106742155908,
+      32.78072136243923
+     ],
+     [
+      -96.79893257844091,
+      32.78072136243923
+     ]
+    ]
+   },
+   "properties": {
+    "ASSETID": "OH-4004",
+    "ASSETTYPE": "OverheadConductor",
+    "ENERGIZED": "Y"
+   }
+  },
+  {
+   "type": "Feature",
+   "geometry": {
+    "type": "Point",
+    "coordinates": [
+     -96.79039241128858,
+     32.78811500539464
+    ]
+   },
+   "properties": {
+    "ASSETID": "PM-9009",
+    "ASSETTYPE": "PadmountTransformer",
+    "ENERGIZED": "Y"
+   }
+  }
+ ]
+}

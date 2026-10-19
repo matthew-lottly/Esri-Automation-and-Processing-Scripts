@@ -1,0 +1,9 @@
+[project]
+name = "gas-electric-leak-response"
+version = "0.1.0"
+description = "Gas leak / electric arcing risk automation for dual-service utilities (ArcGIS Survey123 + Feature Services)"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "."]
+testpaths = ["tests"]
