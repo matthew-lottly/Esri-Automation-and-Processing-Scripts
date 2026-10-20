@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from shapely.geometry import Point
 
-from gas_electric_response.bootstrap import build_demo
+from gas_electric_response.bootstrap import DemoRuntimeFactory
 from gas_electric_response.config import LayerSchema, RiskParameters
 from gas_electric_response.models import FeatureRecord, IncidentContext, LeakReport
 
@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 @pytest.fixture
 def runtime(tmp_path):
-    return build_demo(tmp_path / "out", str(ROOT / "config"), str(ROOT / "sample_data"))
+    return DemoRuntimeFactory(tmp_path / "out", str(ROOT / "config"), str(ROOT / "sample_data")).create()
 
 
 @pytest.fixture

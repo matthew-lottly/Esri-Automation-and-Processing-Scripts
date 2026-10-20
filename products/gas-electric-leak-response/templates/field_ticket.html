@@ -1,0 +1,66 @@
+{# =====================================================================================================
+   REPORT 1 - FIELD TICKET  (compliance record of what the technician submitted)
+
+   This is a Jinja2 template. Copy it, edit it, and point REPORT_TEMPLATE_A at your copy.
+     {{ report.leak_id }}                 print a value               {{ report.lel_pct | fmt('.1f') }}   format a number
+     {% if report.photos %} ... {% endif %}   conditional             {% for row in electric_hits %} ... {% endfor %}   loop
+     {{ map(zoom_m=140) }}                map zoomed to the submitted feature
+   List every available field with:  python -m gas_electric_response template-help
+   ===================================================================================================== #}
+{% from "partials/macros.html" import header, footer, kpi, field, callout %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Field Ticket {{ report.leak_id }}</title>
+  <style>{{ theme_css }}</style>
+  <link rel="stylesheet" href="report.css"/>
+</head>
+<body>
+  {{ header("Gas Leak Field Ticket", report.leak_id ~ "   |   " ~ report.reported_local) }}
+  {{ footer("Compliance record of the field submission - generated " ~ generated.local ~ " - original technician inputs, not re-interpreted") }}
+
+  <div class="kpis">
+    {{ kpi("Peak reading", report.effective_lel_pct | fmt('.1f'), "% LEL", grade.color) }}
+    {{ kpi("Gas concentration", report.ppm | fmt(',.0f'), "ppm") }}
+    {{ kpi("Surface cover", report.surface_cover | title_case, text=True) }}
+    {{ kpi("Pipeline", report.pipeline_type | title_case, text=True) }}
+  </div>
+
+  <h2>Submission</h2>
+  <div class="fields">
+    {{ field("Leak ID", report.leak_id) }}                      {{ field("Feature type", report.geometry_type) }}
+    {{ field("Technician badge", report.crew_badge) }}          {{ field("Pressure class", report.pressure_class | title_case) }}
+    {{ field("Submitted (local)", report.reported_local) }}     {{ field("Instrument temp", report.temp_c | fmt('.1f') ~ " °C") }}
+    {{ field("Submitted (UTC)", report.reported_utc) }}         {{ field("Source GlobalID", report.source_global_id) }}
+    {{ field("Location (lat, lon)", report.anchor) }}           {{ field("Source ObjectID", report.source_object_id) }}
+  </div>
+
+  <h2>Location of submitted feature</h2>
+  {# Zoomed to the point / line / polygon the technician submitted. Options:
+       zoom_m=140          fixed half-width in metres       padding=0.5        or: margin around the feature
+       basemap='none'      none | osm | esri_street | esri_imagery | esri_gray
+       layers=['electric','valves']   which registered layers to draw (default: all)
+       height_in=3.6       map height                         #}
+  {{ map(height_in=3.6, padding=0.55, basemap='none') }}
+
+  <h2>Technician notes</h2>
+  <p>{{ report.notes }}</p>
+
+  {% if incident.is_duplicate %}
+    {{ callout("Repeat reading of " ~ incident.duplicate_of ~ " (within 50 ft / 12 h).", "Duplicate reading", "var(--grade-2)") }}
+  {% endif %}
+  {% if flags %}
+    {{ callout(flags, "Data-quality flags", "var(--grade-2)") }}
+  {% endif %}
+
+  <h2>Inspection photos and instrument screenshots</h2>
+  {{ photo_gallery(columns=2) }}
+
+  <h2>Raw submitted attributes</h2>
+  <table class="data">
+    <thead><tr><th style="width:32%">Attribute</th><th>Value</th></tr></thead>
+    <tbody>{% for row in raw_attributes %}<tr><td>{{ row.name }}</td><td>{{ row.value }}</td></tr>{% endfor %}</tbody>
+  </table>
+</body>
+</html>

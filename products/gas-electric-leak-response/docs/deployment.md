@@ -29,7 +29,7 @@ Windows hosts can use UNC paths in `.env` (`\\\\server\\share\\...`). Linux/macO
 sidecar; enforce true immutability with share/NTFS permissions (give the service account *create* but not *modify/delete*).
 
 ## Containers
-A `Dockerfile` is provided as a starting point (not tested by the author): mount `.env`, `config/`, the state folder and the report shares.
+A `Dockerfile` is provided as a starting point (not built or tested by the author; it installs the Pango libraries WeasyPrint needs): mount `.env`, `config/`, `templates/`, the state folder and the report shares.
 
 ## Monitoring
 * `GET /health` for liveness. Failed pipelines e-mail GIS admin + EOC ("Automation FAILED ... manual triage required"); a failure *after* the incident row was published is reported as "PARTIALLY FAILED".

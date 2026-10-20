@@ -1,0 +1,23 @@
+{# Reusable building blocks. Import in a template with:  {% from "partials/macros.html" import kpi, callout, field, header %} #}
+
+{% macro header(title, id_text) %}
+<div class="band"><div class="band-title">{{ title }}</div><div class="band-id">{{ id_text }}</div></div>
+{% endmacro %}
+
+{% macro footer(text) %}<div class="ftr">{{ text }}</div>{% endmacro %}
+
+{% macro kpi(label, value, unit="", color="var(--ink)", text=False) %}
+<div class="kpi" style="border-top-color: {{ color }}">
+  <div class="kpi-label">{{ label }}</div>
+  <div class="kpi-value{% if text %} text{% endif %}" style="color: {{ color }}">{{ value }}{% if unit %}<span class="kpi-unit">{{ unit }}</span>{% endif %}</div>
+</div>
+{% endmacro %}
+
+{% macro field(label, value) %}<div class="label">{{ label }}</div><div>{{ value }}</div>{% endmacro %}
+
+{% macro callout(text, title="", color="var(--accent)") %}
+<div class="callout" style="border-left-color: {{ color }}">
+  {% if title %}<div class="callout-title">{{ title }}</div>{% endif %}
+  <div>{{ text }}</div>
+</div>
+{% endmacro %}

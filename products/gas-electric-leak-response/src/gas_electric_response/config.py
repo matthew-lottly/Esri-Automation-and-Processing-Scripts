@@ -12,12 +12,34 @@ from dotenv import load_dotenv
 from .exceptions import ConfigError
 
 
-def _split(v: str | None) -> list[str]:
-    return [x.strip() for x in (v or "").split(",") if x.strip()]
+class EnvReader:
+    """Typed reads from the process environment (after `.env` has been loaded)."""
+
+    @staticmethod
+    def text(name: str, default: str = "") -> str:
+        return os.environ.get(name, default)
+
+    @staticmethod
+    def csv(name: str) -> list[str]:
+        return [x.strip() for x in os.environ.get(name, "").split(",") if x.strip()]
+
+    @staticmethod
+    def flag(name: str, default: bool) -> bool:
+        v = os.environ.get(name)
+        return default if v in (None, "") else v.strip().lower() in ("1", "true", "yes", "y", "on")
+
+    @staticmethod
+    def integer(name: str, default: int) -> int:
+        v = os.environ.get(name, "")
+        return int(v) if v.strip() else default
 
 
-def _bool(v: str | None, default: bool) -> bool:
-    return default if v in (None, "") else v.strip().lower() in ("1", "true", "yes", "y", "on")
+class YamlFile:
+    @staticmethod
+    def load(path: Path) -> dict[str, Any]:
+        if not path.exists():
+            raise ConfigError(f"Config file not found: {path}")
+        return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
 
 
 @dataclass
@@ -64,6 +86,11 @@ class Settings:
     webhook_hmac_secret: str = ""
     webhook_hmac_header: str = "X-Signature"
     state_db_path: str = "./state/processed.sqlite"
+    template_dir: str = "./templates"
+    report_template_a: str = "field_ticket.html"
+    report_template_b: str = "risk_assessment.html"
+    report_data_class: str = ""             # optional "package.module:ClassName" - a ReportData subclass adding your own variables/tables
+    placeholder_media: bool = False       # True = maps/photos render as neutral placeholders (demo / template previews)
     timezone: str = "America/Chicago"
     config_dir: str = "./config"
     log_level: str = "INFO"
@@ -75,34 +102,37 @@ class Settings:
     @classmethod
     def from_env(cls, env_file: str | None = None) -> "Settings":
         load_dotenv(env_file or ".env", override=False)
-        e = os.environ.get
+        t, csv, flag = EnvReader.text, EnvReader.csv, EnvReader.flag
         return cls(
-            portal_url=e("ARCGIS_PORTAL_URL", "https://www.arcgis.com"),
-            username=e("ARCGIS_USERNAME", ""), password=e("ARCGIS_PASSWORD", ""),
-            client_id=e("ARCGIS_CLIENT_ID", ""), client_secret=e("ARCGIS_CLIENT_SECRET", ""),
-            survey_layer_url=e("SURVEY_FEATURE_LAYER_URL", ""),
-            incident_layer_url=e("INCIDENT_LAYER_URL", ""), plume_layer_url=e("PLUME_LAYER_URL", ""),
-            electric_layer_url=e("ELECTRIC_ASSETS_LAYER_URL", ""), valves_layer_url=e("GAS_VALVES_LAYER_URL", ""),
-            facilities_layer_url=e("CRITICAL_FACILITIES_LAYER_URL", ""), meters_layer_url=e("CUSTOMER_METERS_LAYER_URL", ""),
-            franchise_layer_url=e("FRANCHISE_LAYER_URL", ""), franchise_geojson=e("FRANCHISE_GEOJSON", ""),
-            require_franchise_check=_bool(e("REQUIRE_FRANCHISE_CHECK"), True),
-            nws_user_agent=e("NWS_USER_AGENT", ""),
-            excavation_provider=e("EXCAVATION_PROVIDER", "none").lower(),
-            excavation_rest_url=e("EXCAVATION_REST_URL", ""), excavation_rest_api_key=e("EXCAVATION_REST_API_KEY", ""),
-            excavation_layer_url=e("EXCAVATION_LAYER_URL", ""),
-            report_path_a=e("REPORT_PATH_A", ""), report_path_b=e("REPORT_PATH_B", ""),
-            email_mode=e("EMAIL_MODE", "smtp").lower(), email_outbox_dir=e("EMAIL_OUTBOX_DIR", "./outbox"),
-            smtp_host=e("SMTP_HOST", ""), smtp_port=int(e("SMTP_PORT", "587") or 587),
-            smtp_starttls=_bool(e("SMTP_USE_STARTTLS"), True),
-            smtp_username=e("SMTP_USERNAME", ""), smtp_password=e("SMTP_PASSWORD", ""), email_from=e("EMAIL_FROM", ""),
-            eoc=_split(e("EOC_DISTRIBUTION")), electric_dispatch=_split(e("ELECTRIC_DISPATCH_DISTRIBUTION")),
-            fire_liaison=_split(e("FIRE_LIAISON_DISTRIBUTION")), gis_admin=_split(e("GIS_ADMIN_EMAIL")),
-            director_gas=_split(e("DIRECTOR_GAS_OPERATIONS_EMAIL")), chief_safety=_split(e("CHIEF_SAFETY_OFFICER_EMAIL")),
-            webhook_token=e("WEBHOOK_TOKEN", ""), webhook_hmac_secret=e("WEBHOOK_HMAC_SECRET", ""),
-            webhook_hmac_header=e("WEBHOOK_HMAC_HEADER", "X-Signature"),
-            state_db_path=e("STATE_DB_PATH", "./state/processed.sqlite"),
-            timezone=e("LOCAL_TIMEZONE", "America/Chicago"), config_dir=e("CONFIG_DIR", "./config"),
-            log_level=e("LOG_LEVEL", "INFO"),
+            portal_url=t("ARCGIS_PORTAL_URL", "https://www.arcgis.com"),
+            username=t("ARCGIS_USERNAME"), password=t("ARCGIS_PASSWORD"),
+            client_id=t("ARCGIS_CLIENT_ID"), client_secret=t("ARCGIS_CLIENT_SECRET"),
+            survey_layer_url=t("SURVEY_FEATURE_LAYER_URL"),
+            incident_layer_url=t("INCIDENT_LAYER_URL"), plume_layer_url=t("PLUME_LAYER_URL"),
+            electric_layer_url=t("ELECTRIC_ASSETS_LAYER_URL"), valves_layer_url=t("GAS_VALVES_LAYER_URL"),
+            facilities_layer_url=t("CRITICAL_FACILITIES_LAYER_URL"), meters_layer_url=t("CUSTOMER_METERS_LAYER_URL"),
+            franchise_layer_url=t("FRANCHISE_LAYER_URL"), franchise_geojson=t("FRANCHISE_GEOJSON"),
+            require_franchise_check=flag("REQUIRE_FRANCHISE_CHECK", True),
+            nws_user_agent=t("NWS_USER_AGENT"),
+            excavation_provider=t("EXCAVATION_PROVIDER", "none").lower(),
+            excavation_rest_url=t("EXCAVATION_REST_URL"), excavation_rest_api_key=t("EXCAVATION_REST_API_KEY"),
+            excavation_layer_url=t("EXCAVATION_LAYER_URL"),
+            report_path_a=t("REPORT_PATH_A"), report_path_b=t("REPORT_PATH_B"),
+            email_mode=t("EMAIL_MODE", "smtp").lower(), email_outbox_dir=t("EMAIL_OUTBOX_DIR", "./outbox"),
+            smtp_host=t("SMTP_HOST"), smtp_port=EnvReader.integer("SMTP_PORT", 587),
+            smtp_starttls=flag("SMTP_USE_STARTTLS", True),
+            smtp_username=t("SMTP_USERNAME"), smtp_password=t("SMTP_PASSWORD"), email_from=t("EMAIL_FROM"),
+            eoc=csv("EOC_DISTRIBUTION"), electric_dispatch=csv("ELECTRIC_DISPATCH_DISTRIBUTION"),
+            fire_liaison=csv("FIRE_LIAISON_DISTRIBUTION"), gis_admin=csv("GIS_ADMIN_EMAIL"),
+            director_gas=csv("DIRECTOR_GAS_OPERATIONS_EMAIL"), chief_safety=csv("CHIEF_SAFETY_OFFICER_EMAIL"),
+            webhook_token=t("WEBHOOK_TOKEN"), webhook_hmac_secret=t("WEBHOOK_HMAC_SECRET"),
+            webhook_hmac_header=t("WEBHOOK_HMAC_HEADER", "X-Signature"),
+            state_db_path=t("STATE_DB_PATH", "./state/processed.sqlite"),
+            template_dir=t("TEMPLATE_DIR", "./templates"), report_template_a=t("REPORT_TEMPLATE_A", "field_ticket.html"),
+            report_template_b=t("REPORT_TEMPLATE_B", "risk_assessment.html"),
+            placeholder_media=flag("REPORT_PLACEHOLDER_MEDIA", False), report_data_class=t("REPORT_DATA_CLASS"),
+            timezone=t("LOCAL_TIMEZONE", "America/Chicago"), config_dir=t("CONFIG_DIR", "./config"),
+            log_level=t("LOG_LEVEL", "INFO"),
         )
 
     def validate_for_production(self) -> None:
@@ -135,12 +165,6 @@ class Settings:
             raise ConfigError("Missing/invalid configuration:\n  - " + "\n  - ".join(missing))
 
 
-def _load_yaml(path: Path) -> dict[str, Any]:
-    if not path.exists():
-        raise ConfigError(f"Config file not found: {path}")
-    return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-
-
 class _Section:
     """Attribute access over a nested dict (keeps YAML keys visible and typo errors loud)."""
 
@@ -166,13 +190,13 @@ class _Section:
 class RiskParameters(_Section):
     @classmethod
     def load(cls, config_dir: str | Path) -> "RiskParameters":
-        return cls(_load_yaml(Path(config_dir) / "risk_parameters.yaml"))
+        return cls(YamlFile.load(Path(config_dir) / "risk_parameters.yaml"))
 
 
 class LayerSchema(_Section):
     @classmethod
     def load(cls, config_dir: str | Path) -> "LayerSchema":
-        s = cls(_load_yaml(Path(config_dir) / "layer_schema.yaml"))
+        s = cls(YamlFile.load(Path(config_dir) / "layer_schema.yaml"))
         for sec in ("survey_layer", "electric_assets", "gas_valves", "critical_facilities", "incident_layer", "plume_layer"):
             s.get(sec)  # fail early if a section vanished
             if sec not in s.raw():

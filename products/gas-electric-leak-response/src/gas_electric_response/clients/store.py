@@ -18,14 +18,18 @@ from shapely.geometry.base import BaseGeometry
 from ..models import FeatureRecord
 
 
-def dt_to_ms(dt: datetime) -> int:
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return int(dt.timestamp() * 1000)
+class EpochMs:
+    """ArcGIS date fields are epoch milliseconds in UTC."""
 
+    @staticmethod
+    def from_datetime(dt: datetime) -> int:
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return int(dt.timestamp() * 1000)
 
-def ms_to_dt(ms: int | float | None) -> datetime | None:
-    return None if ms is None else datetime.fromtimestamp(ms / 1000, tz=timezone.utc)
+    @staticmethod
+    def to_datetime(ms: int | float | None) -> datetime | None:
+        return None if ms is None else datetime.fromtimestamp(ms / 1000, tz=timezone.utc)
 
 
 @dataclass
@@ -106,7 +110,7 @@ class InMemoryFeatureStore(FeatureStore):
                 continue
             if q.time_field:
                 v = a.get(q.time_field)
-                if v is None or (q.time_from and v < dt_to_ms(q.time_from)) or (q.time_to and v > dt_to_ms(q.time_to)):
+                if v is None or (q.time_from and v < EpochMs.from_datetime(q.time_from)) or (q.time_to and v > EpochMs.from_datetime(q.time_to)):
                     continue
             if q.geometry is not None and (r.geometry is None or not r.geometry.intersects(q.geometry)):
                 continue

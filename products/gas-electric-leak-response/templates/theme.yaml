@@ -1,0 +1,13 @@
+# Palette shared by every template (as CSS variables like var(--accent)) and by report maps.
+# Edit a hex value here and every report picks it up.
+name: slate
+colors:
+  ink: "#14202B"          # main text, header band
+  muted: "#5F6C7B"        # labels, secondary text
+  faint: "#93A0AE"        # footer text
+  rule: "#E3E8EE"         # hairlines, table borders
+  surface: "#F6F8FA"      # zebra rows, tiles, callouts
+  accent: "#1F6FEB"       # section bars
+  grade_1: "#D1271E"      # Hazard Severity Index: Critical
+  grade_2: "#E8890C"      #                         Urgent
+  grade_3: "#2F9E5B"      #                         Monitored

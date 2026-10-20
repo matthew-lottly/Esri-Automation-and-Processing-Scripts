@@ -8,6 +8,12 @@
 5. Surface cover / pipeline material only scale the radius; they do not model soil permeability, frost, or main depth.
 6. 811 ticket data is vendor-specific; the REST client must be adapted to your provider (docs/excavation-811.md).
 
+## Reports
+- PDFs use WeasyPrint (needs Pango; Windows needs the GTK runtime) - not verified on Windows.
+- Report maps zoom to the submitted feature using YOUR registered layers; online basemaps (OSM/Esri tiles) are best-effort, were not fetched live by the author, and carry their own usage terms.
+- The demo and the committed `examples/` show maps and photos as neutral placeholders by design.
+- A report is generated once (write-once store). Changing a template does not rewrite past reports.
+
 ## Operations
 7. Holidays are not detected by the 17:00 job (its window is rolling, so nothing is lost). 8. Run one receiver instance per state folder; `serve` and `poll` may share it.
 9. A forced re-run needs a new GlobalID or a cleared ledger row. 10. The reconcile window counts rows by `PROCESSED_AT`, not by edit tracking.

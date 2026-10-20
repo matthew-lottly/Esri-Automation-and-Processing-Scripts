@@ -13,38 +13,46 @@ from typing import Any
 
 from ..config import Settings
 from ..exceptions import ConfigError, StoreError
-from ..geo import from_esri_json, to_esri_json
+from ..geo import EsriGeometry
 from ..models import FeatureRecord
 from .store import FeatureStore, Query
 
 log = logging.getLogger(__name__)
 
 
-def connect(settings: Settings):
-    """Return an authenticated `arcgis.gis.GIS`. Imported lazily so the rest of the code works without arcgis."""
-    try:
-        from arcgis.gis import GIS
-    except ImportError as exc:  # pragma: no cover
-        raise ConfigError("The `arcgis` package is not installed. Run: pip install -r requirements.txt") from exc
-    try:
-        if settings.client_id and settings.client_secret:
-            gis = GIS(settings.portal_url, client_id=settings.client_id, client_secret=settings.client_secret)
-        else:
-            gis = GIS(settings.portal_url, settings.username, settings.password)
-    except Exception as exc:  # the API raises many exception types
-        raise StoreError(f"Could not sign in to {settings.portal_url}: {exc}") from exc
-    if getattr(gis, "users", None) and gis.users.me is None:
-        raise StoreError("ArcGIS sign-in returned no user. Check credentials/portal URL.")
-    return gis
+class ArcGISConnection:
+    """Signs in to ArcGIS Online / Enterprise. `arcgis` is imported lazily so the rest of the code works without it."""
 
+    def __init__(self, settings: Settings):
+        self.settings = settings
 
-def _sql_literal(v: Any) -> str:
-    if isinstance(v, (int, float)):
-        return str(v)
-    return "'" + str(v).replace("'", "''") + "'"
+    def open(self):
+        try:
+            from arcgis.gis import GIS
+        except ImportError as exc:  # pragma: no cover
+            raise ConfigError("The `arcgis` package is not installed. Run: pip install -r requirements.txt") from exc
+        s = self.settings
+        try:
+            if s.client_id and s.client_secret:
+                gis = GIS(s.portal_url, client_id=s.client_id, client_secret=s.client_secret)
+            else:
+                gis = GIS(s.portal_url, s.username, s.password)
+        except Exception as exc:  # the API raises many exception types
+            raise StoreError(f"Could not sign in to {s.portal_url}: {exc}") from exc
+        if getattr(gis, "users", None) and gis.users.me is None:
+            raise StoreError("ArcGIS sign-in returned no user. Check credentials/portal URL.")
+        return gis
 
 
 class ArcGISFeatureStore(FeatureStore):
+    """FeatureStore backed by an ArcGIS feature layer (hosted or enterprise)."""
+
+    @staticmethod
+    def _sql_literal(v: Any) -> str:
+        if isinstance(v, (int, float)):
+            return str(v)
+        return "'" + str(v).replace("'", "''") + "'"
+
     def __init__(self, gis, url: str, name: str):
         from arcgis.features import FeatureLayer
 
@@ -65,7 +73,7 @@ class ArcGISFeatureStore(FeatureStore):
     # ---- reads -----------------------------------------------------------------------
     @staticmethod
     def build_where(q: Query) -> str:
-        parts = [f"{k} = {_sql_literal(v)}" for k, v in q.equals.items()]
+        parts = [f"{k} = {ArcGISFeatureStore._sql_literal(v)}" for k, v in q.equals.items()]
         if q.time_field:
             fmt = "%Y-%m-%d %H:%M:%S"
             if q.time_from:
@@ -81,7 +89,7 @@ class ArcGISFeatureStore(FeatureStore):
             from arcgis.geometry import Geometry
             from arcgis.geometry.filters import intersects
 
-            kwargs["geometry_filter"] = intersects(Geometry(to_esri_json(q.geometry)), sr=4326)
+            kwargs["geometry_filter"] = intersects(Geometry(EsriGeometry.encode(q.geometry)), sr=4326)
         if q.order_by:
             kwargs["order_by_fields"] = q.order_by
         try:
@@ -92,7 +100,7 @@ class ArcGISFeatureStore(FeatureStore):
         for f in fset.features:
             geom = None
             if q.return_geometry and f.geometry:
-                geom = from_esri_json(dict(f.geometry))
+                geom = EsriGeometry.decode(dict(f.geometry))
             attrs = dict(f.attributes)
             recs.append(FeatureRecord(attrs, geom, attrs.get(self._oid)))
         return recs
@@ -104,7 +112,7 @@ class ArcGISFeatureStore(FeatureStore):
         if r.object_id is not None:
             d["attributes"][oid_field] = r.object_id
         if r.geometry is not None:
-            d["geometry"] = to_esri_json(r.geometry)
+            d["geometry"] = EsriGeometry.encode(r.geometry)
         return d
 
     def add(self, records: list[FeatureRecord]) -> list[int]:

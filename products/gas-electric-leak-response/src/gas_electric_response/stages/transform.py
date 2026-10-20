@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from ..clients.store import dt_to_ms
+from ..clients.store import EpochMs
 from ..exceptions import ConfigError
 from ..models import HazardGrade, IncidentContext
 from ..reference import Services
@@ -29,7 +29,7 @@ class SchemaMapper:
         if t == "double":
             return round(float(value), 4)
         if t == "datetime":
-            return dt_to_ms(value) if isinstance(value, datetime) else int(value)
+            return EpochMs.from_datetime(value) if isinstance(value, datetime) else int(value)
         raise ConfigError(f"Unknown field type '{t}' for {key}")
 
     def to_attributes(self, values: dict[str, Any]) -> dict[str, Any]:

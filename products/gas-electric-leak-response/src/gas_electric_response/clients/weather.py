@@ -35,51 +35,59 @@ class FixedWeatherClient(WeatherClient):
         return self.obs
 
 
-def _to_mps(value: float | None, unit: str) -> float | None:
-    if value is None:
-        return None
-    u = (unit or "").lower()
-    if "km_h" in u:
-        return value / 3.6
-    if "m_s" in u:
-        return value
-    if "mi_h" in u:
-        return value * 0.44704
-    if "kt" in u or "knot" in u:
-        return value * 0.514444
-    raise ValueError(f"Unknown wind speed unit: {unit}")
+class UnitConverter:
+    """Converts NWS `unitCode` values; units are read from each value, never assumed."""
+
+    @staticmethod
+    def to_mps(value: float | None, unit: str) -> float | None:
+        if value is None:
+            return None
+        u = (unit or "").lower()
+        if "km_h" in u:
+            return value / 3.6
+        if "m_s" in u:
+            return value
+        if "mi_h" in u:
+            return value * 0.44704
+        if "kt" in u or "knot" in u:
+            return value * 0.514444
+        raise ValueError(f"Unknown wind speed unit: {unit}")
+
+    @staticmethod
+    def to_celsius(value: float | None, unit: str) -> float | None:
+        if value is None:
+            return None
+        return (value - 32) * 5 / 9 if "degf" in (unit or "").lower() else value
+
+    @staticmethod
+    def to_hpa(value: float | None, unit: str) -> float | None:
+        if value is None:
+            return None
+        u = (unit or "").lower()
+        return value / 100 if u.endswith(":pa") else value if "hpa" in u or "mb" in u else None
 
 
-def _to_c(value: float | None, unit: str) -> float | None:
-    if value is None:
-        return None
-    return (value - 32) * 5 / 9 if "degf" in (unit or "").lower() else value
+class NWSObservationParser:
+    """Pure conversion of an NWS observation `properties` dict to a WeatherObservation (unit-tested)."""
 
+    def __init__(self, max_age_min: int = 90):
+        self.max_age_min = max_age_min
 
-def _to_hpa(value: float | None, unit: str) -> float | None:
-    if value is None:
-        return None
-    u = (unit or "").lower()
-    return value / 100 if u.endswith(":pa") else value if "hpa" in u or "mb" in u else None
-
-
-def parse_observation(props: dict, station: str, max_age_min: int = 90) -> WeatherObservation:
-    """Convert an NWS observation `properties` dict to a WeatherObservation (pure function, unit-tested)."""
-    g = lambda k: props.get(k) or {}
-    ws, wd, t, p = g("windSpeed"), g("windDirection"), g("temperature"), g("barometricPressure")
-    obs_time = None
-    if props.get("timestamp"):
-        obs_time = datetime.fromisoformat(props["timestamp"].replace("Z", "+00:00"))
-    speed = _to_mps(ws.get("value"), ws.get("unitCode", ""))
-    obs = WeatherObservation(speed, wd.get("value"), _to_c(t.get("value"), t.get("unitCode", "")),
-                             _to_hpa(p.get("value"), p.get("unitCode", "")), station, obs_time)
-    calm = speed is not None and speed < 1.0
-    if speed is None or (obs.wind_from_deg is None and not calm):
-        obs.status = "PARTIAL"   # speed missing, or a real wind with no direction
-    # (a calm reading with a null direction is normal for NWS and is valid)
-    if obs_time and datetime.now(timezone.utc) - obs_time > timedelta(minutes=max_age_min):
-        obs.status = "STALE" if obs.status == "OK" else obs.status
-    return obs
+    def parse(self, props: dict, station: str) -> WeatherObservation:
+        g = lambda k: props.get(k) or {}
+        ws, wd, t, p = g("windSpeed"), g("windDirection"), g("temperature"), g("barometricPressure")
+        obs_time = None
+        if props.get("timestamp"):
+            obs_time = datetime.fromisoformat(props["timestamp"].replace("Z", "+00:00"))
+        speed = UnitConverter.to_mps(ws.get("value"), ws.get("unitCode", ""))
+        obs = WeatherObservation(speed, wd.get("value"), UnitConverter.to_celsius(t.get("value"), t.get("unitCode", "")),
+                                 UnitConverter.to_hpa(p.get("value"), p.get("unitCode", "")), station, obs_time)
+        calm = speed is not None and speed < 1.0
+        if speed is None or (obs.wind_from_deg is None and not calm):
+            obs.status = "PARTIAL"   # speed missing, or a real wind with no direction (a calm reading with null direction is valid)
+        if obs_time and datetime.now(timezone.utc) - obs_time > timedelta(minutes=self.max_age_min):
+            obs.status = "STALE" if obs.status == "OK" else obs.status
+        return obs
 
 
 class NWSWeatherClient(WeatherClient):
@@ -89,6 +97,7 @@ class NWSWeatherClient(WeatherClient):
         if not user_agent:
             raise ValueError("NWS requires a User-Agent that identifies you (NWS_USER_AGENT).")
         self.max_stations, self.timeout = max_stations, timeout
+        self.parser = NWSObservationParser()
         self.s = session or requests.Session()
         self.s.headers.update({"User-Agent": user_agent, "Accept": "application/geo+json"})
         retry = Retry(total=3, backoff_factor=1.0, status_forcelist=(429, 500, 502, 503, 504), allowed_methods=("GET",))
@@ -114,7 +123,7 @@ class NWSWeatherClient(WeatherClient):
             except (requests.RequestException, KeyError, ValueError) as exc:
                 log.info("NWS station %s unavailable: %s", sid, exc)
                 continue
-            obs = parse_observation(props, sid)
+            obs = self.parser.parse(props, sid)
             if obs.status == "OK":
                 return obs
             best = best or obs      # remember the first partial/stale one as a fallback

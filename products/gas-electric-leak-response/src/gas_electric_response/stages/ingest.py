@@ -12,7 +12,7 @@ from shapely.prepared import prep
 
 from ..clients.store import Query
 from ..exceptions import StageRejected, StoreError
-from ..geo import buffer_m, FT_PER_M
+from ..geo import LocalFrame, Units
 from ..models import IncidentContext
 from ..reference import Services
 from .base import Stage
@@ -82,7 +82,7 @@ class ValidateStage(Stage):
 class FetchPhotosStage(Stage):
     name = "Fetch inspection photos"
     description = "Download photo attachments from the survey layer for the field ticket"
-    external = "ArcGIS survey layer attachments"
+    external = "ArcGIS survey attachments"
     group = "Cleaning Stage 1"
 
     def __init__(self, svc: Services, work_dir: Path):
@@ -110,7 +110,7 @@ class DedupeStage(Stage):
 
     def __init__(self, svc: Services):
         self.svc = svc
-        self.radius_m = float(svc.params.dedupe.radius_ft) / FT_PER_M
+        self.radius_m = Units.ft_to_m(float(svc.params.dedupe.radius_ft))
         self.window = timedelta(hours=float(svc.params.dedupe.window_hours))
         self.lel_delta = float(svc.params.dedupe.get("escalation_lel_delta_pct", 10.0))
 
@@ -118,7 +118,7 @@ class DedupeStage(Stage):
         r, sch = ctx.report, self.svc.schema
         f = sch.incident_field
         q = Query(equals={f("is_duplicate"): 0}, time_field=f("reported_at"), time_from=r.reported_at - self.window,
-                  time_to=r.reported_at, geometry=buffer_m(r.lon, r.lat, self.radius_m), order_by=f"{f('reported_at')} ASC")
+                  time_to=r.reported_at, geometry=LocalFrame(r.lon, r.lat).buffer(r.geometry, self.radius_m), order_by=f"{f('reported_at')} ASC")
         parents = [p for p in self.svc.incidents.query(q) if p.attributes.get(f("leak_id")) != r.leak_id]
         if not parents:
             return

@@ -9,12 +9,12 @@ from fastapi.testclient import TestClient
 
 from gas_electric_response.clients.arcgis_store import ArcGISFeatureStore
 from gas_electric_response.clients.store import Query
-from gas_electric_response.clients.weather import parse_observation
+from gas_electric_response.clients.weather import NWSObservationParser
 from gas_electric_response.config import ConfigError, Settings
-from gas_electric_response.flowchart import inject, pipeline_mermaid
+from gas_electric_response.flowchart import MermaidRenderer, ReadmeInjector
 from gas_electric_response.ledger import ProcessedLedger
-from gas_electric_response.receiver.app import create_app
-from gas_electric_response.receiver.payload import extract_pointer, is_new_submission
+from gas_electric_response.receiver.app import WebhookApp
+from gas_electric_response.receiver.payload import WebhookPayloadParser
 from gas_electric_response.reconcile import DailyReconciler
 from gas_electric_response.stages.transform import SchemaMapper
 from tests.test_pipeline_end_to_end import run_all
@@ -24,28 +24,29 @@ def test_nws_unit_conversion_and_partial():
     p = {"timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
          "windSpeed": {"unitCode": "wmoUnit:km_h-1", "value": 18.0}, "windDirection": {"unitCode": "wmoUnit:degree_(angle)", "value": 250},
          "temperature": {"unitCode": "wmoUnit:degC", "value": 15.0}, "barometricPressure": {"unitCode": "wmoUnit:Pa", "value": 101300}}
-    o = parse_observation(p, "KXXX")
+    o = NWSObservationParser().parse(p, "KXXX")
     assert o.wind_speed_mps == pytest.approx(5.0) and o.pressure_hpa == pytest.approx(1013) and o.status == "OK"
     p["windDirection"]["value"] = None
-    assert parse_observation(p, "KXXX").status == "PARTIAL"
+    assert NWSObservationParser().parse(p, "KXXX").status == "PARTIAL"
 
 
 def test_nws_stale_flag():
     p = {"timestamp": "2020-01-01T00:00:00Z", "windSpeed": {"unitCode": "wmoUnit:m_s-1", "value": 3}, "windDirection": {"value": 10}}
-    assert parse_observation(p, "K").status == "STALE"
+    assert NWSObservationParser().parse(p, "K").status == "STALE"
 
 
 def test_payload_pointer_variants():
-    ptr = extract_pointer({"eventType": "addData", "feature": {"attributes": {"globalid": "{ABC-1}", "objectid": "7"}}})
-    assert ptr.global_id == "abc-1" and ptr.object_id == 7 and is_new_submission(ptr.event)
-    assert not is_new_submission("editData") and not is_new_submission("deleteData")
-    assert extract_pointer({"nothing": 1}) is None and extract_pointer([1]) is None
+    P = WebhookPayloadParser()
+    ptr = P.extract_pointer({"eventType": "addData", "feature": {"attributes": {"globalid": "{ABC-1}", "objectid": "7"}}})
+    assert ptr.global_id == "abc-1" and ptr.object_id == 7 and P.is_new_submission(ptr.event)
+    assert not P.is_new_submission("editData") and not P.is_new_submission("deleteData")
+    assert P.extract_pointer({"nothing": 1}) is None and P.extract_pointer([1]) is None
 
 
 def test_webhook_auth_and_queueing(runtime):
     s = Settings(webhook_token="s3cret", email_mode="file")
     body = {"eventType": "addData", "feature": {"attributes": {"GlobalID": "{00000001-0000-4000-8000-000000000001}"}}}
-    with TestClient(create_app(runtime, s)) as c:
+    with TestClient(WebhookApp(runtime, s).build()) as c:
         assert c.post("/webhooks/survey123", json=body).status_code == 401
         assert c.post("/webhooks/survey123?token=wrong", json=body).status_code == 401
         r = c.post("/webhooks/survey123?token=s3cret", json=body)
@@ -59,14 +60,14 @@ def test_webhook_hmac(runtime):
     s = Settings(webhook_token="t", webhook_hmac_secret="k", email_mode="file")
     raw = json.dumps({"feature": {"attributes": {"objectid": 1}}}).encode()
     good = hmac.new(b"k", raw, hashlib.sha256).hexdigest()
-    with TestClient(create_app(runtime, s)) as c:
+    with TestClient(WebhookApp(runtime, s).build()) as c:
         assert c.post("/webhooks/survey123?token=t", content=raw, headers={"X-Signature": "bad"}).status_code == 401
         assert c.post("/webhooks/survey123?token=t", content=raw, headers={"X-Signature": "sha256=" + good}).status_code == 202
 
 
 def test_app_refuses_without_token(runtime):
     with pytest.raises(ConfigError):
-        create_app(runtime, Settings(webhook_token=""))
+        WebhookApp(runtime, Settings(webhook_token=""))
 
 
 def test_schema_mapper_types_and_unknown_keys(schema):
@@ -126,16 +127,17 @@ def test_daily_reconcile_detects_missing_pdf(runtime):
 
 
 def test_flowchart_is_generated_from_stage_list(runtime):
-    m = pipeline_mermaid(runtime.pipeline.stages)
-    from gas_electric_response.flowchart import _esc
-    assert m.startswith("```mermaid") and all(_esc(st.name) in m for st in runtime.pipeline.stages)
+    mer = MermaidRenderer()
+    m = mer.pipeline(runtime.pipeline.stages)
+    assert m.startswith("```mermaid") and all(mer.esc(st.name) in m for st in runtime.pipeline.stages)
     text = "a\n<!-- FLOWCHART:X:START -->\nold\n<!-- FLOWCHART:X:END -->\nb"
-    assert "NEW" in inject(text, "X", "NEW") and "old" not in inject(text, "X", "NEW")
+    inj = ReadmeInjector()
+    assert "NEW" in inj.inject(text, "X", "NEW") and "old" not in inj.inject(text, "X", "NEW")
 
 
 def test_diagnostics_on_demo(runtime):
-    from gas_electric_response.diagnostics import run_checks
-    res = run_checks(runtime.services)
-    failing = [m for ok, m in res if not ok]
+    from gas_electric_response.diagnostics import SetupDiagnostics
+    res = SetupDiagnostics(runtime.services).run()
+    failing = [r.message for r in res if not r.ok]
     # in-memory incident/plume stores are empty so only those two may report missing fields
     assert all(m.startswith(("incidents", "plumes")) for m in failing), failing

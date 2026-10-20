@@ -6,28 +6,20 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from .bootstrap import Runtime
-from .clients.store import Query, ms_to_dt
+from .clients.store import EpochMs, Query
 from .models import FeatureRecord
 
 log = logging.getLogger(__name__)
 
 
-def retry_notifications(rt: Runtime, max_age_hours: float = 6, min_age_minutes: float = 3) -> int:
-    """Re-send e-mails whose NOTIFY_STATUS is FAILED, or PENDING for longer than `min_age_minutes`
-    (so a pipeline that is still running is not raced). Returns how many were sent."""
-    svc, f = rt.services, rt.services.schema.incident_field
-    now = datetime.now(timezone.utc)
-    rows = svc.incidents.query(Query(time_field=f("processed_at"), time_from=now - timedelta(hours=max_age_hours), return_geometry=False))
-    st, sent = svc.settings, 0
-    for r in rows:
-        a = r.attributes
-        status = a.get(f("notify_status"))
-        if status not in ("FAILED", "PENDING"):
-            continue
-        processed = ms_to_dt(a.get(f("processed_at")))
-        if status == "PENDING" and processed and now - processed < timedelta(minutes=min_age_minutes):
-            continue
-        to = sorted(set(st.eoc + st.electric_dispatch + st.fire_liaison))
+class NotificationRetrier:
+    """Re-sends e-mails whose NOTIFY_STATUS is FAILED, or PENDING for longer than `min_age_minutes`
+    (so a pipeline that is still running is not raced). The PDF is already on the shared drive."""
+
+    def __init__(self, rt: Runtime, max_age_hours: float = 6, min_age_minutes: float = 3):
+        self.rt, self.max_age, self.min_age = rt, max_age_hours, min_age_minutes
+
+    def _compose(self, a, f) -> tuple[str, str, list[Path]]:
         path = a.get(f("report_b_path"))
         attach = [Path(path)] if path and Path(path).exists() else []
         grade = a.get(f("grade"))
@@ -37,11 +29,27 @@ def retry_notifications(rt: Runtime, max_age_hours: float = 6, min_age_minutes: 
                 f"Nearest valves: {a.get(f('valve_ids')) or 'none found'}\n"
                 f"Electric ignition assets in plume: {a.get(f('elec_ignition_count'))}; critical facilities: {a.get(f('critical_fac_count'))}\n"
                 + ("" if attach else "(Risk assessment PDF not available - see the incident layer.)\n"))
-        try:
-            rt.notifier.send(subject, text, to, attachments=attach)
-        except Exception as exc:
-            log.error("Notification retry for %s failed: %s", a.get(f("leak_id")), exc)
-            continue
-        svc.incidents.update([FeatureRecord({f("notify_status"): "SENT"}, None, r.object_id)])
-        sent += 1
-    return sent
+        return subject, text, attach
+
+    def run_once(self) -> int:
+        svc, f = self.rt.services, self.rt.services.schema.incident_field
+        now = datetime.now(timezone.utc)
+        rows = svc.incidents.query(Query(time_field=f("processed_at"), time_from=now - timedelta(hours=self.max_age), return_geometry=False))
+        st, sent = svc.settings, 0
+        for r in rows:
+            a = r.attributes
+            status = a.get(f("notify_status"))
+            if status not in ("FAILED", "PENDING"):
+                continue
+            processed = EpochMs.to_datetime(a.get(f("processed_at")))
+            if status == "PENDING" and processed and now - processed < timedelta(minutes=self.min_age):
+                continue
+            subject, text, attach = self._compose(a, f)
+            try:
+                self.rt.notifier.send(subject, text, sorted(set(st.eoc + st.electric_dispatch + st.fire_liaison)), attachments=attach)
+            except Exception as exc:
+                log.error("Notification retry for %s failed: %s", a.get(f("leak_id")), exc)
+                continue
+            svc.incidents.update([FeatureRecord({f("notify_status"): "SENT"}, None, r.object_id)])
+            sent += 1
+        return sent

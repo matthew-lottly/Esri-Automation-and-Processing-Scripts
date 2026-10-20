@@ -24,4 +24,14 @@ class Services:
     tickets: ExcavationTicketClient
     meters: FeatureStore | None = None
     franchise_polygon: object | None = None          # shapely geometry, WGS84, or None when check disabled
-    extras: dict = field(default_factory=dict)
+    extra_layers: dict = field(default_factory=dict)  # add your own FeatureStores here: they become usable in report maps
+
+    @property
+    def layers(self) -> dict[str, FeatureStore]:
+        """Name -> FeatureStore registry. Report-template maps and tables refer to layers by these names."""
+        reg = {"survey": self.survey, "incidents": self.incidents, "plumes": self.plumes, "electric": self.electric,
+               "valves": self.valves, "facilities": self.facilities}
+        if self.meters is not None:
+            reg["meters"] = self.meters
+        reg.update(self.extra_layers)
+        return reg

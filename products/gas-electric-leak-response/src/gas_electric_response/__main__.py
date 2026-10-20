@@ -1,3 +1,3 @@
-from .cli import main
+from .cli import CommandLineApp
 
-raise SystemExit(main())
+raise SystemExit(CommandLineApp().main())

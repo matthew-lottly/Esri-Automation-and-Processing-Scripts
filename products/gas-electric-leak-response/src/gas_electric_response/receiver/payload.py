@@ -16,34 +16,37 @@ class Pointer:
     event: str
 
 
-def _ci_get(d: dict, name: str) -> Any:
-    for k, v in d.items():
-        if k.lower() == name:
-            return v
-    return None
+class WebhookPayloadParser:
+    NEW_TOKENS = ("add", "create", "submit")
+    CHANGE_TOKENS = ("edit", "update", "delete")
 
-
-def extract_pointer(payload: Any) -> Pointer | None:
-    if not isinstance(payload, dict):
+    @staticmethod
+    def _ci_get(d: dict, name: str) -> Any:
+        for k, v in d.items():
+            if k.lower() == name:
+                return v
         return None
-    event = str(_ci_get(payload, "eventtype") or "")
-    feature = _ci_get(payload, "feature") or {}
-    attrs = _ci_get(feature, "attributes") if isinstance(feature, dict) else None
-    if not isinstance(attrs, dict):
-        return None
-    gid, oid = _ci_get(attrs, "globalid"), _ci_get(attrs, "objectid")
-    if gid is None and oid is None:
-        return None
-    try:
-        oid = int(oid) if oid is not None else None
-    except (TypeError, ValueError):
-        oid = None
-    return Pointer(str(gid).strip("{}").lower() if gid else None, oid, event)
 
+    def extract_pointer(self, payload: Any) -> Pointer | None:
+        if not isinstance(payload, dict):
+            return None
+        event = str(self._ci_get(payload, "eventtype") or "")
+        feature = self._ci_get(payload, "feature") or {}
+        attrs = self._ci_get(feature, "attributes") if isinstance(feature, dict) else None
+        if not isinstance(attrs, dict):
+            return None
+        gid, oid = self._ci_get(attrs, "globalid"), self._ci_get(attrs, "objectid")
+        if gid is None and oid is None:
+            return None
+        try:
+            oid = int(oid) if oid is not None else None
+        except (TypeError, ValueError):
+            oid = None
+        return Pointer(str(gid).strip("{}").lower() if gid else None, oid, event)
 
-def is_new_submission(event: str) -> bool:
-    """Only new submissions trigger processing; edits/deletes are ignored (an edit would re-grade a closed incident)."""
-    e = event.lower()
-    if not e:
-        return True
-    return any(t in e for t in ("add", "create", "submit")) and not any(t in e for t in ("edit", "update", "delete"))
+    def is_new_submission(self, event: str) -> bool:
+        """Only new submissions trigger processing; edits/deletes are ignored (an edit would re-grade a closed incident)."""
+        e = event.lower()
+        if not e:
+            return True
+        return any(t in e for t in self.NEW_TOKENS) and not any(t in e for t in self.CHANGE_TOKENS)

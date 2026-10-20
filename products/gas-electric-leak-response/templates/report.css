@@ -1,0 +1,58 @@
+/* Shared look for all report templates.  Colours come from theme.yaml (CSS variables are injected as {{ theme_css }}). */
+@page {
+  size: Letter;
+  margin: 23mm 15mm 19mm 15mm;
+  @bottom-left  { content: element(ftr); width: 80%; }
+  @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 7.5pt Helvetica, Arial, sans-serif; color: var(--faint); }
+}
+/* Header band: position:fixed repeats on every page; negative offsets let it bleed into the page margins. */
+.band { position: fixed; top: -23mm; left: -15mm; right: -15mm; height: 17mm; background: var(--ink); border-left: 2.4mm solid var(--accent); }
+.band-title { position: absolute; left: 12.6mm; top: 0; color: #fff; font: 700 12pt Helvetica, Arial, sans-serif; line-height: 17mm; }
+.band-id    { position: absolute; right: 15mm; top: 0; color: #C9D3DE; font: 8.5pt Helvetica, Arial, sans-serif; line-height: 17mm; }
+.ftr       { position: running(ftr); color: var(--faint); font: 7pt Helvetica, Arial, sans-serif; }
+
+* { box-sizing: border-box; }
+body { font: 9pt/1.4 Helvetica, Arial, sans-serif; color: var(--ink); margin: 0; }
+h2 { font: 700 11pt Helvetica, Arial, sans-serif; margin: 12pt 0 5pt; padding-left: 8pt; border-left: 4.5pt solid var(--accent); break-after: avoid; }
+p { margin: 0 0 4pt; }
+.muted { color: var(--muted); }
+.small { font-size: 7.5pt; color: var(--muted); line-height: 1.35; }
+
+/* KPI tiles */
+.kpis { display: flex; gap: 7pt; margin: 0 0 4pt; }
+.kpi { flex: 1; min-height: 41pt; background: var(--surface); border: 0.6pt solid var(--rule); border-top: 2.4pt solid var(--ink); border-radius: 3pt; padding: 7pt 9pt 8pt; }
+.kpi-label { font: 700 6.6pt Helvetica, Arial, sans-serif; letter-spacing: .6pt; text-transform: uppercase; color: var(--muted); }
+.kpi-value { font: 700 20pt/1.15 Helvetica, Arial, sans-serif; margin-top: 2pt; }
+.kpi-value.text { font-size: 13.5pt; line-height: 1.55; }
+.kpi-unit  { font: 400 8pt Helvetica, Arial, sans-serif; color: var(--muted); margin-left: 3pt; }
+
+/* banner */
+.banner { color: #fff; border-radius: 3pt; padding: 9pt 13pt; margin: 0 0 7pt; }
+.banner-title { font: 700 17pt/1.15 Helvetica, Arial, sans-serif; }
+.banner-sub { font-size: 8.5pt; margin-top: 2pt; opacity: .95; }
+
+/* label/value grid */
+.fields { display: grid; grid-template-columns: 31mm 1fr 31mm 1fr; column-gap: 8pt; }
+.fields > div { padding: 4pt 6pt; border-bottom: 0.4pt solid var(--rule); }
+.fields > .label { font: 700 7.4pt Helvetica, Arial, sans-serif; color: var(--muted); }
+
+/* data tables */
+table.data { width: 100%; border-collapse: collapse; font-size: 8.4pt; }
+table.data th { text-align: left; font: 700 7.2pt Helvetica, Arial, sans-serif; color: var(--muted); padding: 4pt 6pt; border-bottom: 0.9pt solid var(--muted); }
+table.data td { padding: 3pt 6pt; border-bottom: 0.4pt solid var(--rule); vertical-align: middle; }
+table.data tbody tr:nth-child(even) td { background: var(--surface); }
+table.data .num { text-align: right; font-variant-numeric: tabular-nums; }
+table.data tr { break-inside: avoid; }
+
+/* callout */
+.callout { background: var(--surface); border-left: 3.5pt solid var(--accent); padding: 6pt 10pt 7pt; margin: 0 0 6pt; break-inside: avoid; }
+.callout-title { font-weight: 700; margin-bottom: 1pt; }
+
+/* media */
+img.map { width: 100%; height: auto; display: block; border: 0.6pt solid var(--rule); border-radius: 3pt; }
+.photos { display: grid; gap: 8pt; }
+.photos.cols-1 { grid-template-columns: 1fr; } .photos.cols-2 { grid-template-columns: 1fr 1fr; } .photos.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+figure.photo { margin: 0; break-inside: avoid; }
+figure.photo img { width: 100%; height: auto; max-height: 62mm; object-fit: contain; border-radius: 3pt; }
+figcaption { font-size: 7pt; color: var(--muted); margin-top: 2pt; }
+.break-before { break-before: page; }

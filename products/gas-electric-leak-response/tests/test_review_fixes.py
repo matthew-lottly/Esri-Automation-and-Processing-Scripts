@@ -7,12 +7,12 @@ import pytest
 from shapely.geometry import Point, Polygon
 
 from gas_electric_response.clients.store import Query
-from gas_electric_response.geo import from_esri_json
+from gas_electric_response.geo import EsriGeometry
 from gas_electric_response.ledger import ProcessedLedger
 from gas_electric_response.models import CIDict, FeatureRecord, WeatherObservation
 from gas_electric_response.plume import PlumeModel
 from gas_electric_response.reconcile import DailyReconciler
-from gas_electric_response.retry import retry_notifications
+from gas_electric_response.retry import NotificationRetrier
 from tests.conftest import make_report
 from tests.test_pipeline_end_to_end import run_all
 
@@ -56,10 +56,10 @@ def test_even_odd_polygon_handles_hole_and_island():
     outer = [[0, 0], [0, 10], [10, 10], [10, 0], [0, 0]]
     hole = [[2, 2], [8, 2], [8, 8], [2, 8], [2, 2]]
     island = [[4, 4], [4, 6], [6, 6], [6, 4], [4, 4]]
-    g = from_esri_json({"rings": [outer, hole, island]})
+    g = EsriGeometry.decode({"rings": [outer, hole, island]})
     assert g.area == pytest.approx(100 - 36 + 4)
     assert g.contains(Point(5, 5)) and not g.contains(Point(3, 3))
-    g2 = from_esri_json({"rings": [outer[::-1]]})        # opposite orientation still a filled polygon
+    g2 = EsriGeometry.decode({"rings": [outer[::-1]]})        # opposite orientation still a filled polygon
     assert g2.area == pytest.approx(100)
 
 
@@ -106,10 +106,10 @@ def test_failed_notification_is_retried_from_the_layer_row(runtime, monkeypatch)
     row = lambda: [r for r in runtime.services.incidents.query(Query()) if r.attributes[f("leak_id")] == "LK-DEMO-A"][0]
     assert ctx.notify_status == "FAILED" and row().attributes[f("notify_status")] == "FAILED"
     monkeypatch.setattr(EmailNotifier, "send", real)                # SMTP recovers
-    assert retry_notifications(runtime) == 1
+    assert NotificationRetrier(runtime).run_once() == 1
     assert row().attributes[f("notify_status")] == "SENT"
     assert any("RETRY" in p.read_text() for p in Path(runtime.services.settings.email_outbox_dir).glob("*.eml"))
-    assert retry_notifications(runtime) == 0
+    assert NotificationRetrier(runtime).run_once() == 0
 
 
 def test_rejection_alert_reaches_eoc_with_treat_as_live_wording(runtime):

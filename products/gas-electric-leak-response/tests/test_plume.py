@@ -2,14 +2,14 @@ import math
 
 from shapely.geometry import Point
 
-from gas_electric_response.geo import to_local
+from gas_electric_response.geo import LocalFrame
 from gas_electric_response.models import WeatherObservation
 from gas_electric_response.plume import PlumeModel
 from tests.conftest import make_report
 
 
 def centroid_xy(res, r):
-    c = to_local(res.polygon, r.lon, r.lat).centroid
+    c = LocalFrame(r.lon, r.lat).to_local(res.polygon).centroid
     return c.x, c.y
 
 

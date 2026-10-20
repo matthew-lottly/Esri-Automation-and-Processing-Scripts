@@ -12,8 +12,9 @@ import logging
 from typing import Any
 
 import requests
+from shapely.geometry import Point
 
-from ..geo import buffer_m, distance_m
+from ..geo import LocalFrame
 from ..models import ExcavationTicket
 from .store import FeatureStore, Query
 
@@ -38,7 +39,8 @@ class LayerTicketClient(ExcavationTicketClient):
 
     def find_tickets(self, lat, lon, radius_m=RADIUS_500FT_M):
         try:
-            recs = self.store.query(Query(geometry=buffer_m(lon, lat, radius_m)))
+            frame = LocalFrame(lon, lat)
+            recs = self.store.query(Query(geometry=frame.circle(radius_m)))
         except Exception as exc:
             log.warning("Ticket layer query failed: %s", exc)
             return None
@@ -47,7 +49,7 @@ class LayerTicketClient(ExcavationTicketClient):
             a = r.attributes
             out.append(ExcavationTicket(str(a.get(self.f["ticket_number_field"], "")), str(a.get(self.f.get("status_field", ""), "")),
                                         str(a.get(self.f.get("work_type_field", ""), "")),
-                                        distance_m(lon, lat, r.geometry) if r.geometry is not None else None,
+                                        frame.distance(Point(lon, lat), r.geometry) if r.geometry is not None else None,
                                         str(a.get(self.f.get("expires_field", ""), ""))))
         return out
 

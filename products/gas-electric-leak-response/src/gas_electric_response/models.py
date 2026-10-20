@@ -81,6 +81,17 @@ class LeakReport:
     notes: str = ""
     raw_attributes: dict[str, Any] = field(default_factory=dict)
     photos: list[str] = field(default_factory=list)   # local paths of downloaded attachments
+    geometry: BaseGeometry | None = None              # the submitted feature: point, line OR polygon (WGS84)
+
+    def __post_init__(self):
+        """`lon`/`lat` are the ANCHOR point (the point itself, or a line/polygon's representative point)."""
+        if self.geometry is None and self.lon == self.lon and self.lat == self.lat:   # not NaN
+            from shapely.geometry import Point
+            self.geometry = Point(self.lon, self.lat)
+
+    @property
+    def geometry_type(self) -> str:
+        return self.geometry.geom_type if self.geometry is not None else "None"
 
 
 @dataclass
@@ -117,6 +128,8 @@ class AssetHit:
     lat: float = 0.0
     name: str = ""
     geometry: BaseGeometry | None = None       # kept so reports can draw lines (conduit) as lines
+    inside_length_m: float | None = None       # line features: length inside the search area
+    inside_area_m2: float | None = None        # polygon features: area inside the search area
 
 
 @dataclass

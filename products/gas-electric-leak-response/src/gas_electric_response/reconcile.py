@@ -5,13 +5,14 @@ import html
 import json
 import logging
 from dataclasses import dataclass, field
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import date, datetime, time, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from .clients.store import Query
 from .notify import EmailError, EmailNotifier
 from .reference import Services
+from .reports.emails import EmailComposer
 
 log = logging.getLogger(__name__)
 FT_PER_M = 3.280839895
@@ -49,6 +50,7 @@ class DailyReconciler:
     def __init__(self, svc: Services, notifier: EmailNotifier, cutoff: time = time(17, 0)):
         self.svc, self.n, self.cutoff = svc, notifier, cutoff
         self.tz = ZoneInfo(svc.settings.timezone)
+        self.composer = EmailComposer(svc)
 
     def window(self, day: date) -> tuple[datetime, datetime]:
         """Calendar-day window 00:00 -> cutoff (used for explicit back-fills with --date)."""
@@ -80,7 +82,7 @@ class DailyReconciler:
     def collect(self, day: date, window: tuple[datetime, datetime] | None = None) -> DailySummary:
         s = DailySummary(day, window or self.window(day))
         start, end = s.window_local
-        f, sch = self.svc.schema.incident_field, self.svc.schema
+        f = self.svc.schema.incident_field
         utc = lambda d: d.astimezone(timezone.utc)
         rows = self.svc.incidents.query(Query(time_field=f("processed_at"), time_from=utc(start), time_to=utc(end), return_geometry=False))
         s.incident_rows = len(rows)
@@ -199,7 +201,7 @@ class DailyReconciler:
         if send:
             to = sorted(set(st.director_gas + st.chief_safety + st.gis_admin))
             try:
-                self.n.send(subject, text, to, html=body)
+                self.n.send(subject, text, to, html=self.composer.daily_html(s, subject) or body)
             except EmailError as exc:
                 log.error("Daily summary e-mail failed: %s", exc)
                 raise

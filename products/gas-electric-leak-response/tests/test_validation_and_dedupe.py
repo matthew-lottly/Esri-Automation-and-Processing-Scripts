@@ -46,8 +46,8 @@ def test_franchise_required_but_missing_fails_closed(runtime):
 
 
 def _incident(rt, leak_id, dx_m, hours_ago, dup=0):
-    from gas_electric_response.geo import from_local
-    g = from_local(Point(dx_m, 0), -96.8, 32.78)
+    from gas_electric_response.geo import LocalFrame
+    g = LocalFrame(-96.8, 32.78).from_local(Point(dx_m, 0))
     f = rt.services.schema.incident_field
     rt.services.incidents.add([FeatureRecord({f("leak_id"): leak_id, f("is_duplicate"): dup, f("grade"): 2, f("max_lel_pct"): 5.0,
         f("reading_count"): 1, f("reported_at"): int((datetime.now(timezone.utc) - timedelta(hours=hours_ago)).timestamp() * 1000)}, g)])

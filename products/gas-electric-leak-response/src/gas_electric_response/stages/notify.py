@@ -4,10 +4,10 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from ..clients.store import Query
 from ..models import FeatureRecord, IncidentContext
-from ..notify import EmailError, EmailNotifier
+from ..notify import EmailNotifier
 from ..reference import Services
+from ..reports.emails import EmailComposer
 from .base import Stage
 
 log = logging.getLogger(__name__)
@@ -21,6 +21,7 @@ class NotifyStage(Stage):
 
     def __init__(self, svc: Services, notifier: EmailNotifier):
         self.svc, self.n = svc, notifier
+        self.composer = EmailComposer(svc)
 
     def run(self, ctx: IncidentContext) -> None:
         if not ctx.notify_required:
@@ -41,7 +42,7 @@ class NotifyStage(Stage):
             text += "\n(Risk assessment PDF could not be written; see incident layer for details.)\n"
         status = "SENT"
         try:
-            self.n.send(subject, text, to, attachments=attach)
+            self.n.send(subject, text, to, html=self.composer.alert_html(ctx), attachments=attach)
         except Exception as exc:          # EmailError, OSError reading the PDF, anything: record it, never skip silently
             status = "FAILED"
             ctx.flags.append("notification failed")
