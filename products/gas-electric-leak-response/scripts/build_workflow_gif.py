@@ -18,8 +18,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class WorkflowRecorder:
-    def __init__(self, html: Path, width: int = 1500, out_width: int = 1200, frames_per_step: int = 6, dt: float = 0.13, colors: int = 160):
-        self.html, self.width, self.out_width, self.fps, self.dt, self.colors = html, width, out_width, frames_per_step, dt, colors
+    def __init__(self, html: Path, width: int = 1500, out_width: int = 1100, frames_per_step: int = 10, dt: float = 0.16, colors: int = 128,
+                 frame_ms: int = 300):
+        # 10 frames x 300 ms = 3 s per step; packets advance `dt` s of animation per frame, so they glide calmly.
+        self.html, self.width, self.out_width, self.fps, self.dt, self.colors, self.frame_ms = html, width, out_width, frames_per_step, dt, colors, frame_ms
 
     @staticmethod
     def chromium() -> str | None:
@@ -61,7 +63,7 @@ class WorkflowRecorder:
         pal = sheet.quantize(colors=self.colors, method=Image.Quantize.MEDIANCUT)
         paletted = [f.quantize(palette=pal, dither=Image.Dither.NONE) for f in small]
         out.parent.mkdir(parents=True, exist_ok=True)
-        paletted[0].save(out, save_all=True, append_images=paletted[1:], duration=int(self.dt * 1000 * 1.0), loop=0, optimize=True, disposal=1)
+        paletted[0].save(out, save_all=True, append_images=paletted[1:], duration=self.frame_ms, loop=0, optimize=True, disposal=1)
         return out.stat().st_size
 
     def run(self, scenario: int, out: Path) -> int:
