@@ -9,7 +9,7 @@ object-oriented Python, `.env` placeholders, Jinja2 report templates and animate
 ![esri](https://img.shields.io/badge/Esri-account%20required%20for%20production-2C7AC3)
 ![style](https://img.shields.io/badge/code-object--oriented-1F6FEB)
 
-<p align="center"><img src="products/gas-electric-leak-response/docs/assets/pipeline.svg" alt="Animated pipeline of the first product" width="100%"/></p>
+<p align="center"><img src="products/gas-electric-leak-response/docs/assets/workflow.gif" alt="Animated pipeline of the first product" width="100%"/></p>
 
 </div>
 
@@ -21,7 +21,7 @@ object-oriented Python, `.env` placeholders, Jinja2 report templates and animate
 
 | Product | Scenario | Status | Offline demo |
 |---|---|---|:-:|
-| ⛽⚡ [**gas-electric-leak-response**](products/gas-electric-leak-response) | Dual-service utility: underground gas leak near electric equipment - webhook intake, weather, plume, electric-asset intersect, hazard grade, live layer update, dual PDF reports, 17:00 reconciliation | Logic tested offline (96 tests); Esri calls **not yet verified on a live org** | ✅ |
+| ⛽⚡ [**gas-electric-leak-response**](products/gas-electric-leak-response) | Dual-service utility: underground gas leak near electric equipment - webhook intake, weather, plume, electric-asset intersect, hazard grade, live layer update, dual PDF reports, 17:00 reconciliation | Logic tested offline (104 tests); Esri calls **not yet verified on a live org** | ✅ |
 
 More products will be added under `products/`. Conventions every product follows: [docs/adding-a-new-product.md](docs/adding-a-new-product.md).
 

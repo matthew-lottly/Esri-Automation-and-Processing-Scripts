@@ -19,6 +19,7 @@ class PublishStage(Stage):
     description = "Incident point, plume polygon, grade and valve references (dashboards/Field Maps update live)"
     external = "ArcGIS incident + plume layers"
     group = "Enterprise GIS Update"
+    limits = "Writes the incident point and the plume polygon; escalations replace the parent plume. Hosted-layer writes are not yet verified against a live org."
 
     def __init__(self, svc: Services):
         self.svc = svc

@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 
 from .stages.base import Stage
-from .svgflow import PipelineSvg, StepsSvg
+from .workflow import WorkflowPage
 
 
 class MermaidRenderer:
@@ -77,27 +77,37 @@ class ReadmeInjector:
 
 
 class DiagramPublisher:
-    """Produces every generated diagram artifact and keeps the README in sync (`write` or `check`)."""
+    """Writes the interactive workflow page and keeps the README in sync (`write` or `check`).
 
-    def __init__(self, stages: list[Stage], recon_steps: list[tuple[str, str]], readme: Path, assets_dir: Path | None = None):
-        self.stages, self.steps, self.readme = stages, recon_steps, Path(readme)
-        self.assets = Path(assets_dir) if assets_dir else self.readme.parent / "docs" / "assets"
-        self.mermaid, self.injector = MermaidRenderer(), ReadmeInjector()
+    The animated GIF is recorded separately (scripts/build_workflow_gif.py) because it needs a browser; `check` therefore verifies the
+    HTML page, the stage table and the README text - everything that could drift from the code.
+    """
+
+    PREVIEW = "https://htmlpreview.github.io/?{repo}/blob/main/{path}"
+
+    def __init__(self, stages: list[Stage], readme: Path, repo_url: str = "https://github.com/matthew-lottly/Esri-Automation-and-Processing-Scripts",
+                 product_path: str = "products/gas-electric-leak-response", assets_dir: Path | None = None):
+        self.stages, self.readme = stages, Path(readme)
+        self.repo_url, self.product_path = repo_url.rstrip("/"), product_path
+        self.docs = self.readme.parent / "docs"
+        self.assets = Path(assets_dir) if assets_dir else self.docs / "assets"
+        self.mermaid, self.injector, self.page = MermaidRenderer(), ReadmeInjector(), WorkflowPage(stages)
 
     def artifacts(self) -> dict[Path, str]:
-        pipeline = PipelineSvg(self.stages).render()
-        recon = StepsSvg(self.steps, "Daily reconciliation", "Weekdays 17:00 local  →  audit layers and drives  →  executive briefing",
-                         "Scheduler 17:00").render()
-        return {self.assets / "pipeline.svg": pipeline, self.assets / "reconcile.svg": recon}
+        return {self.docs / "workflow.html": self.page.render()}
+
+    def interactive_url(self) -> str:
+        return self.PREVIEW.format(repo=self.repo_url, path=f"{self.product_path}/docs/workflow.html")
 
     def readme_text(self) -> str:
-        rel = lambda p: p.relative_to(self.readme.parent).as_posix()
-        pipe, recon = self.assets / "pipeline.svg", self.assets / "reconcile.svg"
+        url, gif = self.interactive_url(), self.assets.relative_to(self.readme.parent).as_posix() + "/workflow.gif"
+        names = " &middot; ".join(sc.name for sc in self.page.scenarios)
         blocks = {
-            "PIPELINE": f'<p align="center"><img src="{rel(pipe)}" alt="Animated data pipeline: Survey123 submission to validated, analysed, published, reported and delivered" width="100%"/></p>\n\n'
+            "PIPELINE": f'<p align="center"><a href="{url}"><img src="{gif}" alt="Animated workflow: a field submission moves through validation, analysis, grading, publishing, reports and alerts" width="100%"/></a></p>\n\n'
+                        f'<p align="center"><b>&#9654; <a href="{url}">Open the interactive workflow</a></b> &nbsp;|&nbsp; <a href="docs/workflow.html">docs/workflow.html</a> (download and open in any browser)<br/>'
+                        f"<sub>Scenarios: {names}. Click any box for what it does, what is tested and its limits.</sub></p>\n\n"
                         f"<details><summary>Static fallback (Mermaid)</summary>\n\n{self.mermaid.pipeline(self.stages)}\n\n</details>",
             "STAGES": StageTable.markdown(self.stages),
-            "RECONCILE": f'<p align="center"><img src="{rel(recon)}" alt="Animated daily reconciliation job" width="100%"/></p>',
         }
         text = self.readme.read_text(encoding="utf-8")
         for name, block in blocks.items():
@@ -105,7 +115,7 @@ class DiagramPublisher:
         return text
 
     def write(self) -> None:
-        self.assets.mkdir(parents=True, exist_ok=True)
+        self.docs.mkdir(exist_ok=True)
         for path, content in self.artifacts().items():
             path.write_text(content, encoding="utf-8")
         self.readme.write_text(self.readme_text(), encoding="utf-8")

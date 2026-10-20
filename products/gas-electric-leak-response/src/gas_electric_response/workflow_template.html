@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gas leak response - interactive workflow</title>
+<style>
+/* Self-contained: no web fonts, no network. Layout: left-to-right process schematic with data packets travelling the lines. */
+:root{
+  --bg:#EAEEF1; --surface:#F8FAFB; --ink:#0F1B24; --muted:#52646F; --line:#A9B8C2;
+  --ext:#35566F; --core:#0A7B76; --core-soft:#D8EEEC; --flow:#C26A00; --flow-soft:#F7E5C9; --person:#0F1B24; --bad:#B42318;
+  --f-body:ui-sans-serif,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --f-display:"Arial Narrow","Roboto Condensed","Helvetica Neue",Arial,sans-serif;
+  --f-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0C1317; --surface:#131C22; --ink:#E6EDF0; --muted:#93A5B0; --line:#34464F;
+  --ext:#8DB3CB; --core:#3FCFC6; --core-soft:#0E2C2C; --flow:#FFB41F; --flow-soft:#3A2A0B; --person:#E6EDF0; --bad:#FF8A80; color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body)}
+.wrap{max-width:1500px;margin:0 auto;padding:26px max(16px,env(safe-area-inset-left)) 40px}
+.eyebrow{font:600 11.5px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+h1{font:700 clamp(1.9rem,4vw,2.9rem)/1.05 var(--f-display);margin:0 0 10px;letter-spacing:.005em}
+.lead{max-width:70ch;color:var(--muted);margin:0 0 16px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 22px;list-style:none;margin:0 0 16px;padding:0;color:var(--muted);font-size:.86rem}
+.legend li{display:flex;align-items:center;gap:8px}
+.controls{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin-bottom:12px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tab,.btn{font:600 .9rem/1 var(--f-body);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:10px 13px;cursor:pointer;min-height:38px}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tab:hover:not([aria-selected="true"]),.btn:hover{border-color:var(--core)}
+.transport{display:flex;gap:6px;margin-left:auto}
+:focus-visible{outline:3px solid var(--core);outline-offset:2px}
+figure{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px}
+.scroll{overflow-x:auto}
+#diagram{display:block;width:100%;min-width:1040px;height:auto;font-family:var(--f-body)}
+figcaption{font-size:.82rem;color:var(--muted);padding:8px 4px 0}
+#diagram text{fill:var(--ink)}
+.colhead{font:700 11px var(--f-mono);letter-spacing:.09em;text-transform:uppercase}
+#diagram text.colhead{fill:var(--muted)}
+.band{fill:var(--core-soft);stroke:var(--core);stroke-width:1.2;opacity:.45}
+#diagram text.bandlabel{font:700 12px var(--f-display);letter-spacing:.16em;fill:var(--core)}
+.edge{fill:none;stroke:var(--line);stroke-width:1.3;opacity:.2;transition:stroke .25s,opacity .25s,stroke-width .25s}
+.edge.lane{opacity:.07}
+.edge.on{stroke:var(--flow);stroke-width:2.6;opacity:1}
+.edge.sel{stroke:var(--core);stroke-width:2.2;opacity:1}
+.arrow{fill:var(--line);opacity:.3}.arrow.on{fill:var(--flow);opacity:1}.arrow.sel{fill:var(--core);opacity:1}
+.dot{fill:var(--flow);stroke:var(--surface);stroke-width:1.4}.dot.sel{fill:var(--core)}
+.node{cursor:pointer;transition:opacity .25s}
+.node rect.body{fill:var(--surface);stroke-width:1.6;transition:stroke .25s,stroke-width .25s}
+.node.logic rect.body{stroke:var(--core)}
+.node.external rect.body{stroke:var(--ext);stroke-dasharray:5 4}
+.node.person rect.body{fill:var(--person);stroke:var(--person)}
+#diagram .node.person text{fill:var(--bg)}
+#diagram .node .nm{font:700 13.6px var(--f-display);letter-spacing:.01em}
+#diagram .node .sb{font:400 10.6px var(--f-body);fill:var(--muted)}
+#diagram .node.person .sb{fill:var(--bg);opacity:.8}
+#diagram .node .num{font:700 9.5px var(--f-mono);fill:var(--core)}
+#diagram .node.external .num{fill:var(--ext)}
+.node.dim{opacity:.5}.node.person.dim{opacity:.65}
+.node.active rect.body{stroke:var(--flow);stroke-width:3;stroke-dasharray:none;fill:var(--flow-soft)}
+#diagram .node.active.person rect.body{fill:var(--person)}
+.node.picked rect.body{stroke:var(--core);stroke-width:3.2;stroke-dasharray:none}
+.node:focus-visible{outline:none}.node:focus-visible rect.body{stroke:var(--core);stroke-width:3.5}
+#diagram text.caption{font:700 15px var(--f-display)}
+.panels{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:14px;margin-top:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;min-width:0}
+.card h3{font:700 1.45rem/1.1 var(--f-display);margin:2px 0 8px}
+.card p{margin:0 0 10px}
+.k{font:600 11px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 4px}
+.dots{display:flex;gap:6px;margin:12px 0 0;flex-wrap:wrap}
+.dots button{width:28px;height:8px;border-radius:4px;border:0;background:var(--line);cursor:pointer;padding:0}
+.dots button[aria-current="step"]{background:var(--flow)}
+.chip{display:inline-block;font:600 11px var(--f-mono);letter-spacing:.05em;text-transform:uppercase;border:1px solid var(--core);color:var(--core);border-radius:4px;padding:2px 7px;margin:0 6px 6px 0}
+.chip.ext{border-style:dashed;border-color:var(--ext);color:var(--ext)}.chip.per{border-color:var(--muted);color:var(--muted)}
+.hint{color:var(--muted);font-size:.9rem}
+dl.det{margin:0}dl.det dt{font:600 11px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:10px}dl.det dd{margin:2px 0 0}
+ul#stepConnections{margin:6px 0 10px;padding-left:1.1rem}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.foot{margin-top:24px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:.86rem;max-width:90ch}
+@media (max-width:820px){.panels{grid-template-columns:1fr}.transport{margin-left:0}}
+body.capture .wrap>:not(figure){display:none}
+body.capture .wrap{padding:0}body.capture figure{border:0;border-radius:0;padding:0}
+body.capture .scroll{overflow:hidden}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Interactive workflow &middot; generated from the code</p>
+  <h1 id="title"></h1>
+  <p class="lead" id="subtitle"></p>
+  <ul class="legend" aria-label="Legend">
+    <li><svg width="30" height="14" aria-hidden="true"><rect x="1" y="1" width="28" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span><b>Pure logic</b> - implemented and unit-tested offline</span></li>
+    <li><svg width="30" height="14" aria-hidden="true"><rect x="1" y="1" width="28" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="5 4"/></svg><span><b>Talks to another system</b> - live call not yet verified in a real environment</span></li>
+    <li><svg width="30" height="14" aria-hidden="true"><rect x="1" y="1" width="28" height="12" rx="3" fill="currentColor"/></svg><span>A person or team that acts</span></li>
+  </ul>
+  <div class="controls">
+    <div class="tabs" role="tablist" aria-label="Scenario" id="tabs"></div>
+    <div class="transport" role="group" aria-label="Playback">
+      <button class="btn" id="prev" type="button">&larr; Back</button>
+      <button class="btn" id="play" type="button" aria-pressed="true">Pause</button>
+      <button class="btn" id="next" type="button">Next &rarr;</button>
+    </div>
+  </div>
+  <figure>
+    <div class="scroll"><svg id="diagram" role="img" aria-label="Workflow diagram. The same content is available as text in the step and component panels below."></svg></div>
+    <figcaption>Amber lines and packets show the selected step. Click or tab to a box to inspect it (teal shows its connections). Nodes are generated from the pipeline's real stage list.</figcaption>
+  </figure>
+  <div class="panels">
+    <section class="card" aria-labelledby="stepTitle">
+      <p class="k" id="stepKicker"></p><h3 id="stepTitle"></h3><p id="stepText"></p>
+      <ul id="stepConnections" class="hint" aria-label="Highlighted connections"></ul>
+      <div id="stepChips"></div><div class="dots" id="dots" role="group" aria-label="Steps"></div><div class="sr" aria-live="polite" id="live"></div>
+    </section>
+    <section class="card" aria-labelledby="detTitle">
+      <p class="k">Selected component</p><h3 id="detTitle">Select a box</h3>
+      <div id="detBody"><p class="hint">Click or tab to any box to see what it does, what is tested and its limits. Press Escape to clear.</p></div>
+    </section>
+  </div>
+  <div class="foot">Screening-level decision support. The plume is a heuristic, not a dispersion model; valves are nearest, not traced upstream. Live Esri, NWS, SMTP and shared-drive calls have not been verified in a real environment - see the project README for the verification table.</div>
+</div>
+<script>
+(function(){
+"use strict";
+var D=/*__DATA__*/null;
+var NS="http://www.w3.org/2000/svg",CAP=location.hash.indexOf("capture")>=0;
+var reduce=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+if(CAP)document.body.classList.add("capture");
+function $(s){return document.querySelector(s)}
+function el(n,a,p){var e=document.createElementNS(NS,n);for(var k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e}
+function h(t,a,x){var e=document.createElement(t);for(var k in(a||{}))e.setAttribute(k,a[k]);if(x!=null)e.textContent=x;return e}
+var NB={},EB={};D.nodes.forEach(function(n){NB[n.id]=n});D.edges.forEach(function(e){EB[e.id]=e});
+$("#title").textContent=D.title;$("#subtitle").textContent=D.subtitle;
+var svg=$("#diagram"),S={sc:0,step:0,playing:!reduce&&!CAP,picked:null},geo,nodeEls={},edgeEls={},timer=null,T=0,last=0;
+
+/* ---------- layout ---------- */
+var NW=178,NH=64,GAP=80,MX=34,Y0=150,VGAP=22;
+function layout(){
+  var cols=D.columns,byCol={};cols.forEach(function(c){byCol[c.id]=[]});
+  D.nodes.forEach(function(n){(byCol[n.col]||(byCol[n.col]=[])).push(n)});
+  var maxN=Math.max.apply(null,cols.map(function(c){return byCol[c.id].length}));
+  var colH=maxN*NH+(maxN-1)*VGAP,pos={},colX={};
+  cols.forEach(function(c,i){
+    colX[c.id]=MX+i*(NW+GAP);var list=byCol[c.id],h=list.length*NH+(list.length-1)*VGAP,top=Y0+(colH-h)/2;
+    list.forEach(function(n,k){pos[n.id]={x:colX[c.id],y:top+k*(NH+VGAP),col:i,idx:k,count:list.length}});
+  });
+  return {W:MX*2+cols.length*NW+(cols.length-1)*GAP,H:Y0+colH+96,pos:pos,colX:colX,colH:colH};
+}
+function route(e,k){
+  var a=geo.pos[e.src],b=geo.pos[e.dst],cx=function(p){return p.x+NW/2},cy=function(p){return p.y+NH/2},pts;
+  if(a.col===b.col){
+    if(Math.abs(a.idx-b.idx)===1){var d=b.y>a.y?1:-1;pts=[[cx(a),d>0?a.y+NH:a.y],[cx(b),d>0?b.y:b.y+NH]]}
+    else{var gx=a.x+NW+GAP/2+((k%4)-1.5)*7;pts=[[a.x+NW,cy(a)],[gx,cy(a)],[gx,cy(b)],[b.x+NW,cy(b)]]}
+  }else{
+    var fw=b.col>a.col,sx=fw?a.x+NW:a.x,ex=fw?b.x:b.x+NW,s1=(fw?1:-1)*(GAP/2+((k%5)-2)*7);
+    if(Math.abs(b.col-a.col)===1&&fw){var mx=sx+s1;pts=[[sx,cy(a)],[mx,cy(a)],[mx,cy(b)],[ex,cy(b)]]}
+    else{var lane=(k%2===0)?(58+(k%6)*3.5):(geo.H-(CAP?78:44)+(k%6)*3.5),g1=sx+(fw?1:-1)*(GAP/2+((k%5)-2)*7),g2=ex-(fw?1:-1)*(GAP/2+((k%5)-2)*7);
+      pts=[[sx,cy(a)],[g1,cy(a)],[g1,lane],[g2,lane],[g2,cy(b)],[ex,cy(b)]]}
+  }
+  return pts;
+}
+function dOf(pts,r){r=r||9;var d="M"+pts[0][0]+" "+pts[0][1];
+  for(var i=1;i<pts.length-1;i++){var p0=pts[i-1],p1=pts[i],p2=pts[i+1];
+    var l1=Math.hypot(p1[0]-p0[0],p1[1]-p0[1]),l2=Math.hypot(p2[0]-p1[0],p2[1]-p1[1]),rr=Math.min(r,l1/2,l2/2);
+    if(rr<1){d+=" L"+p1[0]+" "+p1[1];continue}
+    var u=[(p0[0]-p1[0])/l1,(p0[1]-p1[1])/l1],v=[(p2[0]-p1[0])/l2,(p2[1]-p1[1])/l2];
+    d+=" L"+(p1[0]+u[0]*rr)+" "+(p1[1]+u[1]*rr)+" Q"+p1[0]+" "+p1[1]+" "+(p1[0]+v[0]*rr)+" "+(p1[1]+v[1]*rr)}
+  var q=pts[pts.length-1];return d+" L"+q[0]+" "+q[1]}
+
+/* ---------- build ---------- */
+function build(){
+  while(svg.firstChild)svg.removeChild(svg.firstChild);nodeEls={};edgeEls={};
+  geo=layout();svg.setAttribute("viewBox","0 0 "+geo.W+" "+(geo.H+(CAP?34:0)));
+  var gB=el("g",{},svg),gE=el("g",{},svg),gA=el("g",{},svg),gD=el("g",{},svg),gN=el("g",{},svg);
+  D.columns.forEach(function(c,i){var t=el("text",{x:geo.colX[c.id]+NW/2,y:30,"class":"colhead","text-anchor":"middle"},gB);t.textContent=c.label;
+    el("rect",{x:geo.colX[c.id],y:38,width:NW,height:2.5,rx:1.2,fill:"var(--line)"},gB)});
+  var mid=["ingest","analyse","decide","deliver"],bx=geo.colX[mid[0]]-14,bw=geo.colX[mid[mid.length-1]]+NW+14-bx;
+  el("rect",{x:bx,y:Y0-48,width:bw,height:geo.colH+66,rx:12,"class":"band"},gB);
+  var bl=el("text",{x:bx+14,y:Y0-27,"class":"bandlabel"},gB);bl.textContent="THE PIPELINE";
+  D.edges.forEach(function(e,k){
+    var pts=route(e,k),p=el("path",{d:dOf(pts),"class":"edge"},gE);
+    var n=pts.length,P=pts[n-1],Q=pts[n-2],ang=Math.atan2(P[1]-Q[1],P[0]-Q[0]),s=7.5;
+    function pt(r,a){return(P[0]+Math.cos(ang+a)*r).toFixed(1)+","+(P[1]+Math.sin(ang+a)*r).toFixed(1)}
+    var ar=el("polygon",{points:pt(0,0)+" "+pt(s,Math.PI-.42)+" "+pt(s,Math.PI+.42),"class":"arrow"},gA);
+    var len=p.getTotalLength(),dots=[];for(var i=0;i<3;i++)dots.push(el("circle",{r:3.7,"class":"dot",cx:-30,cy:-30,visibility:"hidden"},gD));
+    var tt=el("title",{},p);tt.textContent=NB[e.src].name+" to "+NB[e.dst].name;
+    edgeEls[e.id]={p:p,ar:ar,len:len,dots:dots,live:false,off:(k*37)%100/100,lane:pts.length>4};
+  });
+  var order=0;D.nodes.forEach(function(n){nodeEls[n.id]=mkNode(n,gN)});
+  if(CAP){var c=el("text",{x:MX,y:geo.H+14,"class":"caption",id:"cap"},svg)}
+  paint();
+}
+function fit(t,fs,max){try{var L=t.getComputedTextLength();if(L>max)t.style.fontSize=(fs*max/L).toFixed(2)+"px"}catch(e){}}
+function mkNode(n,g){
+  var p=geo.pos[n.id],cls="node "+n.kind,x=p.x,y=p.y;
+  var gr=el("g",{"data-id":n.id,"class":cls,tabindex:"0",role:"button","aria-label":n.name+". "+n.sub},g);
+  el("rect",{x:x,y:y,width:NW,height:NH,rx:9,"class":"body"},gr);
+  var words=n.name.split(" "),lines=[n.name];
+  if(n.name.length>22){var best=1,bd=1e9;for(var i=1;i<words.length;i++){var a=words.slice(0,i).join(" ").length,b=words.slice(i).join(" ").length,d=Math.abs(a-b);if(d<bd){bd=d;best=i}}
+    lines=[words.slice(0,best).join(" "),words.slice(best).join(" ")]}
+  var y1=lines.length===2?y+22:y+29;
+  lines.forEach(function(L,i){var nm=el("text",{x:x+12,y:y1+i*15,"class":"nm"},gr);nm.textContent=L;fit(nm,13.6,NW-(n.num?42:24))});
+  var sb=el("text",{x:x+12,y:y+NH-11,"class":"sb"},gr);sb.textContent=n.sub;fit(sb,10.6,NW-24);
+  if(n.num){var nn=el("text",{x:x+NW-10,y:y+15,"class":"num","text-anchor":"end"},gr);nn.textContent=(n.num<10?"0":"")+n.num}
+  gr.addEventListener("click",function(){pick(n.id)});
+  gr.addEventListener("keydown",function(ev){if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();pick(n.id)}else if(ev.key==="Escape")pick(null)});
+  return gr;
+}
+
+/* ---------- state -> view ---------- */
+function cur(){return D.scenarios[S.sc].steps[S.step]}
+function paint(){
+  var st=cur(),on={},nd={},conn={};st.edges.forEach(function(i){on[i]=1;nd[EB[i].src]=1;nd[EB[i].dst]=1});st.nodes.forEach(function(i){nd[i]=1});
+  if(S.picked)D.edges.forEach(function(e){if(e.src===S.picked||e.dst===S.picked){conn[e.id]=1;nd[e.src]=1;nd[e.dst]=1}});
+  Object.keys(edgeEls).forEach(function(id){var r=edgeEls[id],o=!!on[id],s=!o&&!!conn[id];
+    r.p.setAttribute("class","edge"+(r.lane&&!o&&!s?" lane":"")+(o?" on":"")+(s?" sel":""));r.ar.setAttribute("class","arrow"+(o?" on":"")+(s?" sel":""));
+    r.live=o||s;r.dots.forEach(function(d){d.setAttribute("class","dot"+(s?" sel":""));d.setAttribute("visibility",r.live?"visible":"hidden")})});
+  Object.keys(nodeEls).forEach(function(id){var g=nodeEls[id],base=NB[id].kind;
+    g.setAttribute("class","node "+base+(nd[id]?" active":" dim")+(S.picked===id?" picked":""))});
+  drawDots();renderStep();renderDetail();
+  if(CAP){var c=$("#cap");if(c)c.textContent=D.scenarios[S.sc].name+"  ·  step "+(S.step+1)+" of "+D.scenarios[S.sc].steps.length+"  —  "+st.title}
+}
+function renderStep(){
+  var sc=D.scenarios[S.sc],st=cur();
+  $("#stepKicker").textContent=sc.name+" · step "+(S.step+1)+" of "+sc.steps.length;$("#stepTitle").textContent=st.title;$("#stepText").textContent=st.text;
+  var ul=$("#stepConnections");ul.textContent="";
+  st.edges.forEach(function(id){var e=EB[id];ul.appendChild(h("li",{},NB[e.src].name+" → "+NB[e.dst].name))});
+  if(!st.edges.length)ul.appendChild(h("li",{},"No data transfer in this step."));
+  var ch=$("#stepChips");ch.textContent="";
+  var ids={};st.nodes.concat(st.edges.reduce(function(a,i){return a.concat([EB[i].src,EB[i].dst])},[])).forEach(function(i){ids[i]=1});
+  var kinds={};Object.keys(ids).forEach(function(i){kinds[NB[i].kind]=1});
+  if(kinds.logic)ch.appendChild(h("span",{"class":"chip"},"Pure logic - tested offline"));
+  if(kinds.external)ch.appendChild(h("span",{"class":"chip ext"},"Live call unverified"));
+  if(kinds.person)ch.appendChild(h("span",{"class":"chip per"},"A person acts"));
+  var dots=$("#dots");dots.textContent="";
+  sc.steps.forEach(function(s,i){var b=h("button",{type:"button","aria-label":"Step "+(i+1)+": "+s.title});if(i===S.step)b.setAttribute("aria-current","step");
+    b.addEventListener("click",function(){go(S.sc,i,true)});dots.appendChild(b)});
+  $("#live").textContent="Step "+(S.step+1)+": "+st.title+". "+st.text;
+}
+function renderDetail(){
+  var t=$("#detTitle"),b=$("#detBody");b.textContent="";
+  if(!S.picked){t.textContent="Select a box";b.appendChild(h("p",{"class":"hint"},"Click or tab to any box to see what it does, what is tested and its limits. Press Escape to clear."));return}
+  var n=NB[S.picked];t.textContent=n.name;
+  b.appendChild(h("span",{"class":"chip "+(n.kind==="external"?"ext":n.kind==="person"?"per":"")},n.kind==="external"?"Talks to another system":n.kind==="person"?"Person / team":"Pure logic"));
+  var dl=h("dl",{"class":"det"});function row(k,v){if(!v)return;dl.appendChild(h("dt",{},k));dl.appendChild(h("dd",{},v))}
+  row("What it does",n.what);row("Status",n.today);row("Where it stops",n.bound);b.appendChild(dl);
+}
+function pick(id){S.picked=(S.picked===id)?null:id;paint()}
+
+/* ---------- playback ---------- */
+function go(sc,step,manual){S.sc=sc;S.step=step;
+  Array.prototype.forEach.call(document.querySelectorAll(".tab"),function(t,i){t.setAttribute("aria-selected",i===sc?"true":"false")});
+  if(manual&&S.playing)schedule();paint()}
+function nextStep(d){var n=D.scenarios[S.sc].steps.length;go(S.sc,(S.step+d+n)%n,true)}
+function schedule(){clearTimeout(timer);if(!S.playing)return;timer=setTimeout(function(){
+  var n=D.scenarios[S.sc].steps.length;go(S.sc,(S.step+1)%n,false);schedule()},6500)}
+function setPlaying(v){S.playing=v;var b=$("#play");b.textContent=v?"Pause":"Play";b.setAttribute("aria-pressed",v?"true":"false");if(v)schedule();else clearTimeout(timer)}
+
+/* ---------- packets ---------- */
+var SPEED=150;
+function drawDots(){Object.keys(edgeEls).forEach(function(id){var r=edgeEls[id];if(!r.live)return;
+  r.dots.forEach(function(d,i){var u=(((T*SPEED/r.len)+i/3+r.off)%1+1)%1,pt=r.p.getPointAtLength(u*r.len);d.setAttribute("cx",pt.x.toFixed(1));d.setAttribute("cy",pt.y.toFixed(1))})})}
+function tick(ts){var dt=Math.min(.05,(ts-last)/1000);last=ts;if(S.playing&&!document.hidden){T+=dt;drawDots()}requestAnimationFrame(tick)}
+
+/* ---------- init ---------- */
+D.scenarios.forEach(function(s,i){var b=h("button",{"class":"tab",role:"tab",type:"button","aria-selected":i===0?"true":"false"},s.name);
+  b.addEventListener("click",function(){S.picked=null;go(i,0,true)});
+  b.addEventListener("keydown",function(ev){var d=ev.key==="ArrowRight"?1:ev.key==="ArrowLeft"?-1:0;if(!d)return;ev.preventDefault();var j=(S.sc+d+D.scenarios.length)%D.scenarios.length;go(j,0,true);document.querySelectorAll(".tab")[j].focus()});
+  $("#tabs").appendChild(b)});
+$("#play").addEventListener("click",function(){setPlaying(!S.playing)});
+$("#prev").addEventListener("click",function(){nextStep(-1)});$("#next").addEventListener("click",function(){nextStep(1)});
+document.addEventListener("keydown",function(ev){if(ev.key==="Escape"&&S.picked)pick(null)});
+build();go(0,0,false);setPlaying(S.playing);if(reduce){$("#play").textContent="Play"}
+requestAnimationFrame(tick);
+/* hooks for the README GIF recorder (scripts/build_workflow_gif.py) */
+window.__wf={frame:function(sc,step,t){S.playing=false;T=t;S.picked=null;go(sc,step,false)},counts:function(){return D.scenarios.map(function(s){return s.steps.length})},size:function(){return[geo.W,geo.H+34]}};
+})();
+</script>
+</body>
+</html>

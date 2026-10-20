@@ -24,6 +24,7 @@ class ValidateStage(Stage):
     name = "Validate coordinates & sensor values"
     description = "Coordinates inside franchise area; reject impossible readings; flag suspicious ones"
     group = "Cleaning Stage 1"
+    limits = "Franchise area and sensor ranges come from your config. Negative readings are rejected; over-range readings are clamped and flagged, never dropped."
 
     def __init__(self, svc: Services):
         self.v = svc.params.validation
@@ -84,6 +85,7 @@ class FetchPhotosStage(Stage):
     description = "Download photo attachments from the survey layer for the field ticket"
     external = "ArcGIS survey attachments"
     group = "Cleaning Stage 1"
+    limits = "Photo download uses the ArcGIS attachments API - not yet verified against a live org. A failed download only flags the report."
 
     def __init__(self, svc: Services, work_dir: Path):
         self.svc, self.work_dir = svc, work_dir
@@ -107,6 +109,7 @@ class DedupeStage(Stage):
     description = "Another leak within 50 ft in the past 12 h => flag as duplicate reading"
     external = "ArcGIS incident layer"
     group = "Cleaning Stage 1"
+    limits = "50 ft / 12 h come from risk_parameters.yaml. A worse duplicate is an escalation (re-analysed and re-notified), never silently merged."
 
     def __init__(self, svc: Services):
         self.svc = svc
@@ -137,6 +140,7 @@ class WeatherStage(Stage):
     description = "Wind speed/direction, temperature and pressure for the leak location"
     external = "NWS weather API"
     group = "Cleaning Stage 1"
+    limits = "Nearest NWS station can be far away or stale; stale or missing wind produces a conservative omnidirectional envelope. The live API has not been called from the dev environment."
 
     def __init__(self, svc: Services):
         self.svc = svc
@@ -156,6 +160,7 @@ class ExcavationStage(Stage):
     description = "Active third-party dig tickets within 500 ft"
     external = "811 ticket service"
     group = "Cleaning Stage 1"
+    limits = "There is no national 811 API - the REST client is a placeholder contract you adapt to your provider. Informational unless you enable escalation."
 
     def __init__(self, svc: Services):
         self.svc = svc

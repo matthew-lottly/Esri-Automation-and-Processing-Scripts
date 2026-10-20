@@ -15,6 +15,7 @@ class Stage(abc.ABC):
     description: str = ""
     external: str | None = None       # external system this stage talks to (shown in the flow chart)
     group: str = ""                   # flow-chart sub-heading, e.g. "Cleaning Stage 1"
+    limits: str = ""                  # honest limits, shown when a stage is selected in the interactive workflow
     skip_when_rejected: bool = True
 
     @abc.abstractmethod

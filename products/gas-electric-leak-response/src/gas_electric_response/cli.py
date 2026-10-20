@@ -151,11 +151,10 @@ class FlowchartCommand(Command):
 
     def run(self, args) -> int:
         from .flowchart import DiagramPublisher
-        from .reconcile import RECONCILE_STEPS
 
         with tempfile.TemporaryDirectory() as td:
             rt = DemoRuntimeFactory(Path(td), args.config, args.sample).create()
-            pub = DiagramPublisher(rt.pipeline.stages, RECONCILE_STEPS, Path(args.readme))
+            pub = DiagramPublisher(rt.pipeline.stages, Path(args.readme))
             if args.check:
                 stale = pub.stale()
                 if stale:
@@ -164,7 +163,7 @@ class FlowchartCommand(Command):
                 self.ui.ok("README diagrams are up to date.")
                 return 0
             pub.write()
-        self.ui.ok("README diagrams regenerated (docs/assets/pipeline.svg, docs/assets/reconcile.svg).")
+        self.ui.ok("Regenerated docs/workflow.html and the README diagram block. Re-record the GIF with: python scripts/build_workflow_gif.py")
         return 0
 
 

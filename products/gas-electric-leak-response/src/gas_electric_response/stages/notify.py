@@ -18,6 +18,7 @@ class NotifyStage(Stage):
     description = "Grades 1-2 only: Report 2 attached, sent immediately"
     external = "SMTP / e-mail"
     group = "Reporting & Distribution"
+    limits = "Grade 1-2 only. A failed e-mail is recorded and retried every 60 s until delivered. Provider acceptance is not inbox receipt."
 
     def __init__(self, svc: Services, notifier: EmailNotifier):
         self.svc, self.n = svc, notifier

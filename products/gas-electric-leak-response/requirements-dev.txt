@@ -2,3 +2,4 @@
 pytest>=8.0
 httpx>=0.27
 pypdfium2>=4.30
+playwright>=1.45   # only for scripts/build_workflow_gif.py (records the README GIF; uses an installed Chromium)

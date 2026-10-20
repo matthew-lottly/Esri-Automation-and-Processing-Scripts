@@ -43,6 +43,7 @@ class DispatchTagStage(Stage):
     name = "Dispatch & work-order tagging"
     description = "Dispatch code, three nearest shutoff valves, status Active_Triage"
     group = "Cleaning Stage 2"
+    limits = "Dispatch codes come from risk_parameters.yaml; plain duplicates get Report 1 only."
 
     def __init__(self, svc: Services):
         self.d = svc.params.dispatch
@@ -64,6 +65,7 @@ class SchemaTransformStage(Stage):
     name = "Align to enterprise schema"
     description = "Strip survey metadata; apply field names, types and integer status codes"
     group = "Cleaning Stage 2"
+    limits = "Field names, types and lengths come from layer_schema.yaml - the same file builds the output service."
 
     def __init__(self, svc: Services):
         self.svc = svc

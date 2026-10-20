@@ -27,6 +27,7 @@ class PlumeStage(Stage):
     name = "Build directional plume"
     description = "Pressure, %LEL, surface cover and wind => dispersion envelope (not a circle)"
     group = "Spatial & Risk Analysis"
+    limits = "A heuristic envelope, NOT a validated dispersion model. Coefficients are placeholders for your safety group to calibrate."
 
     def __init__(self, svc: Services):
         self.model = PlumeModel(svc.params)
@@ -90,6 +91,7 @@ class ElectricIntersectStage(OverlayStage):
     external = "ArcGIS electric assets layer"
     group = "Spatial & Risk Analysis"
     store_name = "electric"
+    limits = "Matches asset types you list in layer_schema.yaml (tolerant of case/spacing); unmapped types are flagged. Lines report length in plume, polygons area."
 
     def __init__(self, svc: Services):
         super().__init__(svc)
@@ -135,6 +137,7 @@ class FacilitiesStage(OverlayStage):
     external = "ArcGIS facilities layer"
     group = "Spatial & Risk Analysis"
     store_name = "facilities"
+    limits = "Only features inside the modeled envelope are found; the envelope is a screening heuristic."
 
     def out_fields(self):
         cf = self.svc.schema.critical_facilities
@@ -162,6 +165,7 @@ class MetersStage(OverlayStage):
     external = "ArcGIS customer meters layer"
     group = "Spatial & Risk Analysis"
     store_name = "meters"
+    limits = "Customer meters are a proxy for occupied structures - there is no building-footprint analysis."
 
     def run(self, ctx: IncidentContext) -> None:
         if self.svc.meters is None:
@@ -179,6 +183,7 @@ class ValveStage(OverlayStage):
     external = "ArcGIS gas valves layer"
     group = "Spatial & Risk Analysis"
     store_name = "valves"
+    limits = "Nearest valves, NOT a traced upstream isolation plan. Confirm with operations or a Utility Network trace."
 
     def search_geometry(self, ctx, frame):
         return frame.buffer(ctx.report.geometry, float(self.svc.params.valves.search_radius_m))
@@ -236,6 +241,7 @@ class GradeStage(Stage):
     name = "Hazard Severity Index"
     description = "Grade 1 Critical / Grade 2 Urgent / Grade 3 Monitored"
     group = "Spatial & Risk Analysis"
+    limits = "Rules and thresholds are configurable and need safety-group sign-off. See docs/hazard-grading.md."
 
     def __init__(self, svc: Services):
         self.policy = GradingPolicy(svc.params)

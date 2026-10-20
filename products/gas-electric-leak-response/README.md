@@ -8,10 +8,10 @@ for dual-service (electric + natural gas) utilities, built on ArcGIS Survey123 a
 ![python](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)
 ![arcgis](https://img.shields.io/badge/ArcGIS%20API%20for%20Python-2.3%2B-2C7AC3)
 ![reports](https://img.shields.io/badge/reports-Jinja2%20%2B%20WeasyPrint-1F6FEB)
-![tests](https://img.shields.io/badge/tests-96%20passing-2F9E5B)
+![tests](https://img.shields.io/badge/tests-104%20passing-2F9E5B)
 ![esri](https://img.shields.io/badge/Esri%20live%20verification-pending-E8890C)
 
-<p align="center"><img src="docs/assets/pipeline.svg" alt="Animated data pipeline" width="100%"/></p>
+<p align="center"><img src="docs/assets/workflow.gif" alt="Animated workflow" width="100%"/></p>
 
 </div>
 
@@ -64,10 +64,12 @@ You get PDFs, `.eml` e-mails and a daily summary in `./demo_output`. Pre-built s
 
 ## How it works
 
-The diagram above and the table below are **generated from the code** (`python -m gas_electric_response flowchart --write`); CI fails if they drift.
+The workflow below is **generated from the code** (`python -m gas_electric_response flowchart --write`): every box is a real pipeline stage and CI fails if the page drifts. Pick a scenario (critical leak, duplicate and escalation, rejected submission, failure and recovery, daily reconciliation, adapting it) and click any box for what it does, what is tested and its limits.
 
 <!-- FLOWCHART:PIPELINE:START -->
-<p align="center"><img src="docs/assets/pipeline.svg" alt="Animated data pipeline: Survey123 submission to validated, analysed, published, reported and delivered" width="100%"/></p>
+<p align="center"><a href="https://htmlpreview.github.io/?https://github.com/matthew-lottly/Esri-Automation-and-Processing-Scripts/blob/main/products/gas-electric-leak-response/docs/workflow.html"><img src="docs/assets/workflow.gif" alt="Animated workflow: a field submission moves through validation, analysis, grading, publishing, reports and alerts" width="100%"/></a></p>
+
+<p align="center"><b>&#9654; <a href="https://htmlpreview.github.io/?https://github.com/matthew-lottly/Esri-Automation-and-Processing-Scripts/blob/main/products/gas-electric-leak-response/docs/workflow.html">Open the interactive workflow</a></b> &nbsp;|&nbsp; <a href="docs/workflow.html">docs/workflow.html</a> (download and open in any browser)<br/><sub>Scenarios: Critical leak (Grade 1) &middot; Duplicate and escalation &middot; Rejected submission &middot; Failure and recovery &middot; Daily 17:00 reconciliation &middot; Adapt it to your data. Click any box for what it does, what is tested and its limits.</sub></p>
 
 <details><summary>Static fallback (Mermaid)</summary>
 
@@ -152,12 +154,6 @@ flowchart TD
 
 </details>
 
-### Daily reconciliation
-
-<!-- FLOWCHART:RECONCILE:START -->
-<p align="center"><img src="docs/assets/reconcile.svg" alt="Animated daily reconciliation job" width="100%"/></p>
-<!-- FLOWCHART:RECONCILE:END -->
-
 ### Hazard Severity Index
 
 | Grade | Rule (defaults; configurable) |
@@ -173,14 +169,8 @@ Edge cases and the interpretation choices to confirm: [docs/hazard-grading.md](d
 Reports and e-mails are **Jinja2 templates** in the downloadable [`templates/`](templates) folder: HTML with `{{ placeholders }}`, `{% for %}` loops and `{% if %}` conditions, a
 `{{ map(...) }}` call that draws a **map zoomed to the submitted feature**, and a shared stylesheet/palette. Copy the folder, edit, point `.env` at it - no Python required.
 
-<table>
-<tr>
-<td width="50%" align="center"><b>Report 1 &middot; Field Ticket</b><br/><sub>submission record · zoomed map · photos</sub><br/><img src="docs/assets/example_field_ticket.png" width="100%"/></td>
-<td width="50%" align="center"><b>Report 2 &middot; Hazard Assessment</b><br/><sub>grade · electric assets · facilities · valves</sub><br/><img src="docs/assets/example_risk_assessment.png" width="100%"/></td>
-</tr>
-</table>
 
-<sub>Examples use synthetic data. Maps and photos appear as neutral **placeholders** in the demo and are filled with the real map and survey photos on live data. PDFs: [`examples/`](examples).</sub>
+<sub>Maps and photos are neutral **placeholders** in the demo and example PDFs ([`examples/`](examples)) and are filled with the real map and survey photos on live data.</sub>
 
 ```jinja
 {{ kpi("Peak reading", report.effective_lel_pct | fmt('.1f'), "% LEL", grade.color) }}
@@ -227,12 +217,12 @@ src/gas_electric_response/
   clients/            FeatureStore (ArcGIS + in-memory) · NWS weather · 811 tickets
   reports/            engine (Jinja2 + PdfEngine) · data (template variables) · mapping (zoomed maps, tile basemap) · emails · storage
   receiver/           FastAPI webhook app · worker · payload parser          poller.py · retry.py · reconcile.py
-  plume.py  geo.py  models.py  config.py  svgflow.py + flowchart.py (animated README diagrams)  cli.py (command classes)
+  plume.py  geo.py  models.py  config.py  workflow.py + flowchart.py (interactive workflow page + README diagram)  cli.py (command classes)
 config/      layer_schema.yaml · risk_parameters.yaml          survey123/   gas_leak_form.xlsx
 templates/   field_ticket.html · risk_assessment.html · email_*.html · report.css · theme.yaml · partials/      <- download / copy these
 examples/    sample PDFs and e-mails (synthetic data)          sample_data/ synthetic GeoJSON layers (no images)
 scripts/     create_incident_service · build_xlsform · make_sample_data · build_examples
-tests/       96 offline tests (PYTHONPATH=src pytest)           docs/        guides
+tests/       104 offline tests (PYTHONPATH=src pytest)           docs/        guides
 ```
 
 ## Documentation
@@ -246,8 +236,8 @@ Be honest about what was and was not tested.
 
 | Area | Status |
 |---|---|
-| Business logic - validation, dedupe/escalation, plume orientation (point/line/polygon), grading, schema mapping, report engine, storage, e-mail, reconcile, webhook auth | ✅ **96 offline tests** on synthetic data (incl. regression tests from an independent code review) |
-| Report PDFs and animated diagrams | ✅ rendered and inspected visually in the development environment |
+| Business logic - validation, dedupe/escalation, plume orientation (point/line/polygon), grading, schema mapping, report engine, storage, e-mail, reconcile, webhook auth | ✅ **104 offline tests** on synthetic data (incl. regression tests from an independent code review) |
+| Report PDFs, the interactive workflow page and the README GIF | ✅ rendered and inspected visually in the development environment |
 | `ArcGISFeatureStore`, `create_incident_service.py`, GIS sign-in | ⚠️ written against the ArcGIS API for Python (signatures checked by introspection) but **not run against a live Esri org** |
 | NWS weather client | ⚠️ parsing/units unit-tested; **never called the live API** from the dev environment |
 | Online basemap tiles for report maps | ⚠️ tile math unit-tested logic only; **not fetched live** here (default `basemap: none` is fully offline) |

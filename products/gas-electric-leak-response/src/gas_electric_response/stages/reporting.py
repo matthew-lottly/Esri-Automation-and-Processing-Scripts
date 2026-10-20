@@ -45,6 +45,7 @@ class ReportStage(Stage):
     description = "Report 1 Field Ticket (with zoomed map) -> Shared Drive A; Report 2 Hazard Assessment -> Shared Drive B"
     external = "Shared drives A and B"
     group = "Reporting & Distribution"
+    limits = "PDFs from your Jinja2 templates via WeasyPrint; write-once with a SHA-256 sidecar. A failed report is flagged and recorded, and never blocks the alert."
 
     def __init__(self, svc: Services):
         self.svc = svc
